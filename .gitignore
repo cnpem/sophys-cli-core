@@ -1,0 +1,3 @@
+**__pycache__**
+src/sophys/cli/__version__.py
+*.egg-info*
