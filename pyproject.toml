@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sophys-cli"
 authors = [
-  { name="Sofia Ferreira", email="thiago.ferreira@lnls.br" },
+  { name="Sofia Ferreira", email="sofia.ferreira@lnls.br" },
 ]
 description = "Command-line support for sophys."
 readme = "README.md"
