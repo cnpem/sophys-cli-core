@@ -1,6 +1,8 @@
 import importlib
 import sys
 
+from types import SimpleNamespace
+
 from kafka.errors import NoBrokersAvailable
 
 from bluesky import RunEngine
@@ -14,7 +16,7 @@ from __beamline_module.devices import instantiate_devices
 from __beamline_module.plans import *
 from __beamline_module.utils import make_kafka_callback
 
-D = instantiate_devices()
+D = SimpleNamespace(**instantiate_devices())
 
 RE = RunEngine({})
 RE.subscribe(BestEffortCallback())
