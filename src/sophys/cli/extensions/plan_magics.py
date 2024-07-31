@@ -210,7 +210,13 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
                 return
 
             if mode_of_operation == ModeOfOperation.Local:
-                return local_ns["RE"](plan_gen())
+                ret = local_ns["RE"](plan_gen())
+                finish_msg = "Plan has finished successfully!"
+
+                if len(ret) > 0:
+                    finish_msg += f" | Run UID: {ret[0]}"
+
+                return finish_msg
             if mode_of_operation == ModeOfOperation.Remote:
                 raise NotImplementedError
         except TypeError as e:
