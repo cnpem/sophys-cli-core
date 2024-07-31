@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from enum import IntEnum
 
 import functools
 import importlib
@@ -9,12 +10,19 @@ from IPython.core.magic import Magics, magics_class, record_magic, needs_local_s
 from sophys.common.utils.registry import find_all as registry_find_all
 
 
+class ModeOfOperation(IntEnum):
+    Local = 0
+    Remote = 1
+
+
 class PlanCLI:
-    def __init__(self, plan_name: str, plan):
+    def __init__(self, plan_name: str, plan, mode_of_operation: ModeOfOperation):
         self._plan_name = plan_name
         self._plan = plan
 
         assert self._plan_name == self._plan.__name__
+
+        self._mode_of_operation = mode_of_operation
 
         self._sent_help_message = False
 
@@ -25,6 +33,10 @@ class PlanCLI:
         Returns
         -------
         A list of device objects, corresponding to the 'device_names' list.
+
+        Throws
+        ------
+        Exception - When a device with the specified name could not be found.
         """
 
         real_devices = []
@@ -68,8 +80,8 @@ class PlanCLI:
 
 
 class PlanCount(PlanCLI):
-    def __init__(self, plan):
-        super().__init__("count", plan)
+    def __init__(self, plan, mode_of_operation: ModeOfOperation):
+        super().__init__("count", plan, mode_of_operation)
 
     def create_parser(self):
         _a = super().create_parser()
@@ -83,12 +95,15 @@ class PlanCount(PlanCLI):
         detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
         num = parsed_namespace.num
 
-        return functools.partial(self._plan, detector, num=num)
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, detector, num=num)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            raise NotImplementedError
 
 
 class PlanScan(PlanCLI):
-    def __init__(self, plan):
-        super().__init__("scan", plan)
+    def __init__(self, plan, mode_of_operation: ModeOfOperation):
+        super().__init__("scan", plan, mode_of_operation)
 
     def create_parser(self):
         _a = super().create_parser()
@@ -113,12 +128,15 @@ class PlanScan(PlanCLI):
         if len(motors_str_list) % 3 == 1:
             num = int(motors_str_list[-1])
 
-        return functools.partial(self._plan, detector, *args, num=num)
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, detector, *args, num=num)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            raise NotImplementedError
 
 
 class PlanGridScan(PlanCLI):
-    def __init__(self, plan):
-        super().__init__("grid_scan", plan)
+    def __init__(self, plan, mode_of_operation: ModeOfOperation):
+        super().__init__("grid_scan", plan, mode_of_operation)
 
     def create_parser(self):
         _a = super().create_parser()
@@ -140,7 +158,10 @@ class PlanGridScan(PlanCLI):
             args.append(float(end_str))
             args.append(int(num_str))
 
-        return functools.partial(self._plan, detector, *args, snake_axes=parsed_namespace.snake_axes)
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, detector, *args, snake_axes=parsed_namespace.snake_axes)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            raise NotImplementedError
 
 
 @magics_class
@@ -148,9 +169,23 @@ class RealMagics(Magics):
     ...
 
 
-def register_magic_for_plan(plan_name, plan, plan_whitelist):
+def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: ModeOfOperation):
+    """
+    Register a plan as a magic with bash-like syntax.
+
+    Parameters
+    ----------
+    plan_name : str
+        The name of the plan, as it is defined.
+    plan : generator object
+        The plan itself.
+    plan_whitelist : dict
+        A dictionary of (plan name) -> (plan magic class), defined in each extension.
+    mode_of_operation : ModeOfOperation
+        Whether to run things locally or via a remote service using httpserver.
+    """
     plan_cls = plan_whitelist[plan_name]
-    plan_obj = plan_cls(plan)
+    plan_obj = plan_cls(plan, mode_of_operation)
 
     _a = plan_obj.create_parser()
     run_callback = plan_obj.create_run_callback()
@@ -163,7 +198,11 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist):
             plan_gen = run_callback(parsed_namespace, local_ns)
             if plan_gen is None:
                 return
-            return local_ns["RE"](plan_gen())
+
+            if mode_of_operation == ModeOfOperation.Local:
+                return local_ns["RE"](plan_gen())
+            if mode_of_operation == ModeOfOperation.Remote:
+                raise NotImplementedError
         except TypeError as e:
             print()
             print("Failed to run the provided plan.")
@@ -178,6 +217,7 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist):
 
 
 def get_plans(beamline: str, plan_whitelist: dict):
+    """Get all plans for this beamline, that are whitelisted."""
     def __inner(module):
         for maybe_plan_name in dir(module):
             if maybe_plan_name not in plan_whitelist:
