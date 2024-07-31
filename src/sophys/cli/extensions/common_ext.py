@@ -5,6 +5,8 @@ import inspect
 import math
 import typing
 
+from pydantic import validate_call
+
 from IPython.core.magic import Magics, magics_class, record_magic, needs_local_scope
 
 
@@ -170,14 +172,7 @@ def register_magic_for_plan(plan_name, plan):
 
             pos_args, kw_args = bind_and_process_mixed(plan_inspect, *pos_args, **kw_args)
 
-            print(pos_args)
-            print(kw_args)
-
-            # NOTE: This is mainly for failing early in case of a problem.
-            bound_plan = plan_inspect.bind(*pos_args, **kw_args)
-            bound_plan.apply_defaults()
-
-            plan_gen = plan(*bound_plan.args, **bound_plan.kwargs)
+            plan_gen = validate_call(plan, config={"arbitrary_types_allowed": True})(*pos_args, **kw_args)
             return local_ns["RE"](plan_gen)
         except TypeError as e:
             print()
