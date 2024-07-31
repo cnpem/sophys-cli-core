@@ -16,11 +16,9 @@ class ModeOfOperation(IntEnum):
 
 
 class PlanCLI:
-    def __init__(self, plan_name: str, plan, mode_of_operation: ModeOfOperation):
-        self._plan_name = plan_name
+    def __init__(self, user_plan_name: str, plan, mode_of_operation: ModeOfOperation):
+        self._plan_name = user_plan_name
         self._plan = plan
-
-        assert self._plan_name == self._plan.__name__
 
         self._mode_of_operation = mode_of_operation
 
@@ -79,10 +77,28 @@ class PlanCLI:
         pass
 
 
-class PlanCount(PlanCLI):
-    def __init__(self, plan, mode_of_operation: ModeOfOperation):
-        super().__init__("count", plan, mode_of_operation)
+class PlanMV(PlanCLI):
+    def create_parser(self):
+        _a = super().create_parser()
 
+        _a.add_argument("args", nargs='+', type=str)
+
+        return _a
+
+    def _create_plan_gen(self, parsed_namespace, local_ns):
+        args = []
+        for i in range(0, len(parsed_namespace.args), 2):
+            obj_str, pos_str = parsed_namespace.args[i:i+2]
+            args.append(self.get_real_devices([obj_str], local_ns)[0])
+            args.append(float(pos_str))
+
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, *args)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            raise NotImplementedError
+
+
+class PlanCount(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
@@ -102,9 +118,6 @@ class PlanCount(PlanCLI):
 
 
 class PlanScan(PlanCLI):
-    def __init__(self, plan, mode_of_operation: ModeOfOperation):
-        super().__init__("scan", plan, mode_of_operation)
-
     def create_parser(self):
         _a = super().create_parser()
 
@@ -135,9 +148,6 @@ class PlanScan(PlanCLI):
 
 
 class PlanGridScan(PlanCLI):
-    def __init__(self, plan, mode_of_operation: ModeOfOperation):
-        super().__init__("grid_scan", plan, mode_of_operation)
-
     def create_parser(self):
         _a = super().create_parser()
 
@@ -176,7 +186,7 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
     Parameters
     ----------
     plan_name : str
-        The name of the plan, as it is defined.
+        The name of the plan, as it will be used by the user.
     plan : generator object
         The plan itself.
     plan_whitelist : dict
@@ -184,8 +194,8 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
     mode_of_operation : ModeOfOperation
         Whether to run things locally or via a remote service using httpserver.
     """
-    plan_cls = plan_whitelist[plan_name]
-    plan_obj = plan_cls(plan, mode_of_operation)
+    user_plan_name, plan_cls = plan_whitelist[plan_name]
+    plan_obj = plan_cls(user_plan_name, plan, mode_of_operation)
 
     _a = plan_obj.create_parser()
     run_callback = plan_obj.create_run_callback()
@@ -213,7 +223,7 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
             tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=1)]
             print("\n".join(f"*** {i}" for item in tb for i in item))
 
-    record_magic(RealMagics.magics, "line", plan_name, __inner)
+    record_magic(RealMagics.magics, "line", user_plan_name, __inner)
 
 
 def get_plans(beamline: str, plan_whitelist: dict):
@@ -223,8 +233,7 @@ def get_plans(beamline: str, plan_whitelist: dict):
             if maybe_plan_name not in plan_whitelist:
                 continue
             maybe_plan = getattr(module, maybe_plan_name)
-            if inspect.isgeneratorfunction(maybe_plan):
-                yield (maybe_plan_name, maybe_plan)
+            yield (maybe_plan_name, maybe_plan)
 
     try:
         from sophys.common.plans import annotated_default_plans as bp

@@ -1,12 +1,13 @@
 from .plan_magics import get_plans, register_magic_for_plan, RealMagics, ModeOfOperation
 
-from .plan_magics import PlanCount, PlanScan, PlanGridScan
+from .plan_magics import PlanMV, PlanCount, PlanScan, PlanGridScan
 
 
 PLAN_WHITELIST = {
-    "count": PlanCount,
-    "scan": PlanScan,
-    "grid_scan": PlanGridScan,
+    "mv": ("mov", PlanMV),
+    "count": ("count", PlanCount),
+    "scan": ("scan", PlanScan),
+    "grid_scan": ("grid_scan", PlanGridScan),
 }
 
 
