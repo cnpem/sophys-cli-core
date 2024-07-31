@@ -116,6 +116,33 @@ class PlanScan(PlanCLI):
         return functools.partial(self._plan, detector, *args, num=num)
 
 
+class PlanGridScan(PlanCLI):
+    def __init__(self, plan):
+        super().__init__("grid_scan", plan)
+
+    def create_parser(self):
+        _a = super().create_parser()
+
+        _a.add_argument("-d", "--detectors", nargs='+', type=str)
+        _a.add_argument("-m", "--motors", nargs='+', type=str)
+        _a.add_argument("-s", "--snake_axes", action="store_true", default=False)
+
+        return _a
+
+    def _create_plan_gen(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
+        args = []
+        motors_str_list = parsed_namespace.motors
+        for i in range(0, len(motors_str_list), 4):
+            obj_str, start_str, end_str, num_str = motors_str_list[i:i+4]
+            args.append(self.get_real_devices([obj_str], local_ns)[0])
+            args.append(float(start_str))
+            args.append(float(end_str))
+            args.append(int(num_str))
+
+        return functools.partial(self._plan, detector, *args, snake_axes=parsed_namespace.snake_axes)
+
+
 @magics_class
 class RealMagics(Magics):
     ...
