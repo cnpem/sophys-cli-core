@@ -1,11 +1,12 @@
 from .plan_magics import get_plans, register_magic_for_plan, RealMagics
 
-from .plan_magics import PlanCount, PlanScan
+from .plan_magics import PlanCount, PlanScan, PlanGridScan
 
 
 PLAN_WHITELIST = {
     "count": PlanCount,
     "scan": PlanScan,
+    "grid_scan": PlanGridScan,
 }
 
 
