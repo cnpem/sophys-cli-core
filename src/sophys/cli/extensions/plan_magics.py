@@ -50,6 +50,7 @@ class PlanCLI:
                 pass
             else:
                 real_devices.append(dev)
+                continue
 
             raise Exception(f"Could not find detector with name '{dev_name}'.")
 
