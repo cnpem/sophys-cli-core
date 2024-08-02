@@ -1,5 +1,4 @@
 import importlib
-import sys
 
 from types import SimpleNamespace
 
@@ -9,12 +8,14 @@ from bluesky import RunEngine
 from bluesky import plans as bp, plan_stubs as bps
 from bluesky.callbacks.best_effort import BestEffortCallback
 
-__beamline_module = importlib.import_module(f"sophys.{BEAMLINE}")
-sys.modules["__beamline_module"] = __beamline_module
+sophys_devices = importlib.import_module(f"sophys.{BEAMLINE}.devices")
+instantiate_devices = sophys_devices.instantiate_devices
 
-from __beamline_module.devices import instantiate_devices
-from __beamline_module.plans import *
-from __beamline_module.utils import make_kafka_callback
+sophys_plans = importlib.import_module(f"sophys.{BEAMLINE}.plans")
+globals().update(sophys_plans.__dict__)
+
+sophys_utils = importlib.import_module(f"sophys.{BEAMLINE}.utils")
+make_kafka_callback = sophys_utils.make_kafka_callback
 
 D = SimpleNamespace(**instantiate_devices())
 
