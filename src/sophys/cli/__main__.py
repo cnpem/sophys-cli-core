@@ -21,6 +21,7 @@ def entrypoint():
     D:        The list of instantiated devices.
     RE:       The Bluesky run engine.
 
+
     The custom available modules are:
     bp:  bluesky.plans
     bps: bluesky.plan_stubs
