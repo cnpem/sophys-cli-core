@@ -16,13 +16,15 @@ globals().update(sophys_plans.__dict__)
 
 sophys_utils = importlib.import_module(f"sophys.{BEAMLINE}.utils")
 make_kafka_callback = sophys_utils.make_kafka_callback
+default_topic_names = sophys_utils.default_topic_names
+default_bootstrap_servers = sophys_utils.default_bootstrap_servers
 
 D = SimpleNamespace(**instantiate_devices())
 
 RE = RunEngine({})
 RE.subscribe(BestEffortCallback())
 
-print("Connecting to kafka...")
+print(f"Connecting to kafka... (IPs: {default_bootstrap_servers()} | Topics: {default_topic_names()})")
 try:
     RE.subscribe(make_kafka_callback(backoff_times=[0.1, 1.0]))
 except (TypeError, NoBrokersAvailable):
