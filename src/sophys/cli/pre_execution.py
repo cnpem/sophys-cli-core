@@ -59,6 +59,7 @@ root.addHandler(handler)
 
 root.setLevel("INFO")
 handler.setLevel("INFO")
+logging.getLogger("bluesky").setLevel("WARNING")
 
 # Kafka callback
 
