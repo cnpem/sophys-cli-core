@@ -7,6 +7,9 @@ import inspect
 
 from IPython.core.magic import Magics, magics_class, record_magic, needs_local_scope
 
+from bluesky.utils import RunEngineInterrupted
+from bluesky.run_engine import PAUSE_MSG
+
 from sophys.common.utils.registry import find_all as registry_find_all
 
 
@@ -214,7 +217,9 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
                 ret = local_ns["RE"](plan_gen())
                 finish_msg = "Plan has finished successfully!"
 
-                if len(ret) > 0:
+                if ret is None:
+                    finish_msg = "Plan has paused!"
+                elif len(ret) > 0:
                     finish_msg += f" | Run UID: {ret[0]}"
 
                 return finish_msg
