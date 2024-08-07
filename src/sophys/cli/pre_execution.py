@@ -1,3 +1,4 @@
+import functools
 import logging
 import importlib
 
@@ -8,6 +9,29 @@ from kafka.errors import NoBrokersAvailable
 from bluesky import RunEngine
 from bluesky import plans as bp, plan_stubs as bps
 from bluesky.callbacks.best_effort import BestEffortCallback
+from bluesky.utils import RunEngineInterrupted
+
+
+class RunEngineWithoutTracebackOnPause(RunEngine):
+    def interruption_wrapper(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except RunEngineInterrupted:
+                print(self.pause_msg)
+        return wrapper
+
+    @functools.wraps(RunEngine.__call__)
+    @interruption_wrapper
+    def __call__(self, *args, **kwargs):
+        return super().__call__(*args, **kwargs)
+
+    @functools.wraps(RunEngine.resume)
+    @interruption_wrapper
+    def resume(self, *args, **kwargs):
+        return super().resume(*args, **kwargs)
+
 
 sophys_devices = importlib.import_module(f"sophys.{BEAMLINE}.devices")
 instantiate_devices = sophys_devices.instantiate_devices
@@ -22,7 +46,7 @@ default_bootstrap_servers = sophys_utils.default_bootstrap_servers
 
 D = SimpleNamespace(**instantiate_devices())
 
-RE = RunEngine({})
+RE = RunEngineWithoutTracebackOnPause({})
 RE.subscribe(BestEffortCallback())
 
 # Logging
