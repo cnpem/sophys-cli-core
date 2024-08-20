@@ -87,5 +87,14 @@ DB = databroker.Broker.named("temp")
 monitor.subscribe(DB.v1.insert)
 monitor.subscribe(BestEffortCallback())
 
+
+def update_last_data(name, _):
+    if name == "stop":
+        globals().update({"LAST": DB[-1].table()})
+
+
+monitor.subscribe(update_last_data)
+LAST = None
+
 monitor.start()
 

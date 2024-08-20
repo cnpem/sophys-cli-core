@@ -21,6 +21,8 @@ def entrypoint():
     BEAMLINE: The currently configured beamline.
     D:        The list of instantiated devices.
     RE:       The Bluesky run engine.
+    DB:       A databroker instance containing the most recent runs data and metadata.
+    LAST:     The last run data, as a Pandas Dataframe.
 
 
     The custom available modules are:
