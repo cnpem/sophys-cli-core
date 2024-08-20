@@ -11,6 +11,10 @@ from bluesky import plans as bp, plan_stubs as bps
 from bluesky.callbacks.best_effort import BestEffortCallback
 from bluesky.utils import RunEngineInterrupted
 
+import databroker
+
+from sophys.common.utils.kafka.monitor import ThreadedMonitor
+
 
 class RunEngineWithoutTracebackOnPause(RunEngine):
     def interruption_wrapper(func):
@@ -73,4 +77,15 @@ except (TypeError, NoBrokersAvailable):
     print("Failed to connect to the kafka broker.")
 else:
     print("Connected to the kafka broker successfully!")
+
+# Kafka-backed databroker
+
+monitor = ThreadedMonitor(None, [], default_topic_names()[0], "sophys-cli.kafka.monitor")
+if not DEBUG:
+    monitor._logger.setLevel("WARNING")
+
+DB = databroker.Broker.named("temp")
+monitor.subscribe(DB.v1.insert)
+
+monitor.start()
 
