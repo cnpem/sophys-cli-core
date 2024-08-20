@@ -7,6 +7,7 @@ from traitlets.config import Config
 def entrypoint():
     parser = ArgumentParser()
     parser.add_argument("beamline", help="The beamline to load the configuration from.")
+    parser.add_argument("--debug", help="Configure debug mode, with more verbose logging and error messgaes.", action="store_true")
     args = parser.parse_args()
 
     beamline = args.beamline
@@ -21,6 +22,7 @@ def entrypoint():
     D:        The list of instantiated devices.
     RE:       The Bluesky run engine.
 
+
     The custom available modules are:
     bp:  bluesky.plans
     bps: bluesky.plan_stubs
@@ -33,5 +35,5 @@ def entrypoint():
     ipy_config.TerminalInteractiveShell.confirm_exit = False
 
     import IPython
-    IPython.start_ipython(argv=[], config=ipy_config, user_ns={"BEAMLINE": beamline})
+    IPython.start_ipython(argv=[], config=ipy_config, user_ns={"BEAMLINE": beamline, "DEBUG": args.debug})
 

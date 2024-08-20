@@ -22,6 +22,7 @@ dependencies = [
   "bluesky",
   "ophyd",
   "sophys-common",
+  "kafka-bluesky-live",
 ]
 
 [project.scripts]
