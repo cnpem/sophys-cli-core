@@ -51,7 +51,6 @@ default_bootstrap_servers = sophys_utils.default_bootstrap_servers
 D = SimpleNamespace(**instantiate_devices())
 
 RE = RunEngineWithoutTracebackOnPause({})
-RE.subscribe(BestEffortCallback())
 
 # Logging
 
@@ -86,6 +85,7 @@ if not DEBUG:
 
 DB = databroker.Broker.named("temp")
 monitor.subscribe(DB.v1.insert)
+monitor.subscribe(BestEffortCallback())
 
 monitor.start()
 
