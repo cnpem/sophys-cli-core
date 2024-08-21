@@ -13,7 +13,41 @@ def entrypoint():
 
     beamline = args.beamline
 
+    # Documentation: https://ipython.readthedocs.io/en/stable/config/options/kernel.html
     ipy_config = Config()
+
+    ipy_config.Application.logging_config = {
+        "formatters": {
+            "default": {
+                "format": "[%(asctime)s] [%(levelname)s] - %(message)s",
+                "datefmt": "%H:%M:%S",
+            },
+            "debug": {
+                "format": "[%(asctime)s] [%(name)s %(levelname)s] - %(message)s",
+            }
+        },
+        "handlers": {
+            "print": {
+                "class": "logging.StreamHandler",
+                "level": "INFO",
+                "formatter": "default" if not args.debug else "debug",
+            },
+        },
+        "loggers": {
+            "kafka": {
+                "level": "WARNING" if not args.debug else "INFO",
+                "handlers": ["print"],
+            },
+            "kafka.coordinator.consumer": {
+                "level": "ERROR",
+                "handlers": ["print"],
+            },
+            "sophys_cli": {
+                "level": "INFO" if not args.debug else "DEBUG",
+                "handlers": ["print"],
+            },
+        }
+    }
 
     ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "pre_execution.py")]
 
