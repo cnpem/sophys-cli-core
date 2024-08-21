@@ -15,6 +15,9 @@ import databroker
 
 from sophys.common.utils.kafka.monitor import ThreadedMonitor
 
+kafka_logger = logging.getLogger("kafka")
+sophys_logger = logging.getLogger("sophys_cli")
+
 
 class RunEngineWithoutTracebackOnPause(RunEngine):
     def interruption_wrapper(func):
@@ -48,40 +51,21 @@ make_kafka_callback = sophys_utils.make_kafka_callback
 default_topic_names = sophys_utils.default_topic_names
 default_bootstrap_servers = sophys_utils.default_bootstrap_servers
 
-D = SimpleNamespace(**instantiate_devices())
-
 RE = RunEngineWithoutTracebackOnPause({})
-
-# Logging
-
-root = logging.getLogger()
-handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] - %(message)s", datefmt="%H:%M:%S")
-handler.setFormatter(formatter)
-root.addHandler(handler)
-
-root.setLevel("INFO")
-handler.setLevel("INFO")
-logging.getLogger("bluesky").setLevel("WARNING")
 
 # Kafka callback
 
-kafka_logger = logging.getLogger("kafka")
-kafka_logger.setLevel("WARNING")
-
-print(f"Connecting to kafka... (IPs: {default_bootstrap_servers()} | Topics: {default_topic_names()})")
+kafka_logger.info(f"Connecting to kafka... (IPs: {default_bootstrap_servers()} | Topics: {default_topic_names()})")
 try:
     RE.subscribe(make_kafka_callback(backoff_times=[0.1, 1.0]))
 except (TypeError, NoBrokersAvailable):
-    print("Failed to connect to the kafka broker.")
+    kafka_logger.info("Failed to connect to the kafka broker.")
 else:
-    print("Connected to the kafka broker successfully!")
+    kafka_logger.info("Connected to the kafka broker successfully!")
 
 # Kafka-backed databroker
 
-monitor = ThreadedMonitor(None, [], default_topic_names()[0], "sophys-cli.kafka.monitor")
-if not DEBUG:
-    monitor._logger.setLevel("WARNING")
+monitor = ThreadedMonitor(None, [], default_topic_names()[0], "kafka.monitor")
 
 DB = databroker.Broker.named("temp")
 monitor.subscribe(DB.v1.insert)
@@ -98,3 +82,8 @@ LAST = None
 
 monitor.start()
 
+# Leave this last so device instantiation errors do not prevent everything else from working
+D = None
+sophys_logger.debug("Instantiating and connecting to devices...")
+D = SimpleNamespace(**instantiate_devices())
+sophys_logger.debug("Instantiation completed successfully!")
