@@ -29,7 +29,7 @@ def entrypoint():
         "handlers": {
             "print": {
                 "class": "logging.StreamHandler",
-                "level": "INFO",
+                "level": "DEBUG",
                 "formatter": "default" if not args.debug else "debug",
             },
         },
