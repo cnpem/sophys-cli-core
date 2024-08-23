@@ -1,5 +1,5 @@
 from .plan_magics import get_plans, register_magic_for_plan, RealMagics, ModeOfOperation
-from .tools_magics import KBLMagics
+from .tools_magics import KBLMagics, HTTPMagics
 
 from .plan_magics import PlanMV, PlanCount, PlanScan, PlanGridScan
 
@@ -26,15 +26,27 @@ def load_ipython_extension(ipython):
 
     print("    The custom available commands are:")
     print("    kbl: Open kafka-bluesky-live")
-    print("")
-    print("")
 
     if not local_mode:
-        remote_session_handler = RemoteSessionHandler("http://10.30.1.50:60610")
-        remote_session_handler.start()
-        remote_session_handler.ask_for_authentication()
+        print("    reload_devices: Reload the available devices list (D).")
+        print("    reload_plans: Reload the available plans list (P).")
 
-        ipython.push({"_remote_session_handler": remote_session_handler})
+        _remote_session_handler = RemoteSessionHandler("http://spu-ioc:60610")
+        _remote_session_handler.start()
+        _remote_session_handler.ask_for_authentication()
+
+        ipython.push({"_remote_session_handler": _remote_session_handler})
+
+        ipython.register_magics(HTTPMagics)
+        ipython.magics_manager.registry["HTTPMagics"].plan_whitelist = PLAN_WHITELIST
+
+        ipython.run_line_magic("reload_devices", "")
+        ipython.run_line_magic("reload_plans", "")
+    else:
+        ipython.push({"P": set(i[0] for i in get_plans("common", PLAN_WHITELIST))})
+
+    print("")
+    print("")
 
 
 def unload_ipython_extension(ipython):

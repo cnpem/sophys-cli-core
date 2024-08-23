@@ -54,7 +54,8 @@ def entrypoint():
     ipy_config.InteractiveShell.banner2 = """
     The custom available variables are:
     BEAMLINE: The currently configured beamline.
-    D:        The list of instantiated devices.
+    D:        The list of available devices (to the current user).
+    P:        The list of available plans (to the current user).
     RE:       The Bluesky run engine.
     DB:       A databroker instance containing the most recent runs data and metadata.
     LAST:     The last run data, as a Pandas Dataframe.
