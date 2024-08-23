@@ -128,20 +128,22 @@ class PlanCount(PlanCLI):
 
         _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-n", "--num", type=int, default=1)
+        _a.add_argument("--delay", type=float, default=0.0)
 
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
+        num = parsed_namespace.num
+        delay = parsed_namespace.delay
+
         if self._mode_of_operation == ModeOfOperation.Local:
             detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-            num = parsed_namespace.num
 
-            return functools.partial(self._plan, detector, num=num)
+            return functools.partial(self._plan, detector, num=num, delay=delay)
         if self._mode_of_operation == ModeOfOperation.Remote:
             detector = parsed_namespace.detectors
-            num = parsed_namespace.num
 
-            return BPlan(self._plan_name, detector, num=num)
+            return BPlan(self._plan_name, detector, num=num, delay=delay)
 
 
 class PlanScan(PlanCLI):
