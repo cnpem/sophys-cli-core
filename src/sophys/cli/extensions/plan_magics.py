@@ -269,7 +269,7 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
             print()
 
             import traceback
-            tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=1)]
+            tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=1, chain=False)]
             print("\n".join(f"*** {i}" for item in tb for i in item))
 
     record_magic(RealMagics.magics, "line", user_plan_name, __inner)
