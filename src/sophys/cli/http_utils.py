@@ -17,6 +17,9 @@ class RemoteSessionHandler(threading.Thread):
     for as long as it runs. Call `close()` then to stop it, closing the manager connection.
     """
 
+    CANCEL_CACHE_TIME = 1.0
+    """The amount of time to wait between consecutive authorization attempts when cancelling."""
+
     @functools.wraps(threading.Thread.__init__)
     def __init__(self, http_server_uri):
         super().__init__(daemon=True)
@@ -32,10 +35,14 @@ class RemoteSessionHandler(threading.Thread):
         self._total_session_token_valid_time = 0
         self._total_refresh_token_valid_time = 0
 
+        self._last_cancel_time = 0
+
     def get_authorized_manager(self):
         """Retrieve the REManager instance, asking for credential if needed."""
         if not self._authorized:
-            self.ask_for_authentication()
+            # If we cancelled just a short while ago, consider this attempt as a cancel too.
+            if time.monotonic() - self._last_cancel_time > self.CANCEL_CACHE_TIME:
+                self.ask_for_authentication()
         return self._manager
 
     def ask_for_authentication(self):
@@ -58,6 +65,7 @@ class RemoteSessionHandler(threading.Thread):
             except (KeyboardInterrupt, EOFError):
                 print()
                 self._logger.info("Authentication cancelled.")
+                self._last_cancel_time = time.monotonic()
                 return False
 
             try:
