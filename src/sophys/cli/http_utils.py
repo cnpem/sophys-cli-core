@@ -35,8 +35,7 @@ class RemoteSessionHandler(threading.Thread):
     def get_authorized_manager(self):
         """Retrieve the REManager instance, asking for credential if needed."""
         if not self._authorized:
-            if not self.ask_for_authentication():
-                return
+            self.ask_for_authentication()
         return self._manager
 
     def ask_for_authentication(self):
