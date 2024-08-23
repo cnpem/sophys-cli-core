@@ -65,7 +65,6 @@ def entrypoint():
     bp:  bluesky.plans
     bps: bluesky.plan_stubs
 
-
 """
 
     ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{beamline}_ext"]

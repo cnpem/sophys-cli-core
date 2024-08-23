@@ -1,8 +1,17 @@
 import logging
 import subprocess
 
+from abc import ABC, abstractmethod
+
 from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
+
+
+class ToolMagicBase(ABC):
+    @staticmethod
+    @abstractmethod
+    def description() -> list[str]:
+        pass
 
 
 @magics_class
@@ -25,6 +34,12 @@ class KBLMagics(Magics):
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         logging.info(f"Running {command_line} in a new process... (PID={proc.pid})")
+
+    @staticmethod
+    def description():
+        tools = []
+        tools.append("kbl: \t\tOpen kafka-bluesky-live")
+        return tools
 
 
 @magics_class
@@ -61,3 +76,10 @@ class HTTPMagics(Magics):
                 self.plan_whitelist = set()
             # We need to modify the original one, not the 'local_ns', which is a copy.
             get_ipython().push({"P": set(res["plans_allowed"]) & set(self.plan_whitelist)})
+
+    @staticmethod
+    def description():
+        tools = []
+        tools.append("reload_devices: \tReload the available devices list (D).")
+        tools.append("reload_plans: \tReload the available plans list (P).")
+        return tools
