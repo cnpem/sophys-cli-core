@@ -1,6 +1,7 @@
 import logging
 import subprocess
 
+from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
 
@@ -24,3 +25,39 @@ class KBLMagics(Magics):
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         logging.info(f"Running {command_line} in a new process... (PID={proc.pid})")
+
+
+@magics_class
+class HTTPMagics(Magics):
+    @line_magic
+    @needs_local_scope
+    def reload_devices(self, line, local_ns):
+        remote_session_handler = local_ns.get("_remote_session_handler", None)
+        if remote_session_handler is None:
+            logging.debug("No '_remote_session_handler' variable present in local_ns.")
+            return
+
+        res = remote_session_handler.get_authorized_manager().devices_allowed()
+        if not res["success"]:
+            logging.warning("Failed to request available devices: %s", res["msg"])
+        else:
+            # We need to modify the original one, not the 'local_ns', which is a copy.
+            get_ipython().push({"D": set(res["devices_allowed"])})
+
+    @line_magic
+    @needs_local_scope
+    def reload_plans(self, line, local_ns):
+        remote_session_handler = local_ns.get("_remote_session_handler", None)
+        if remote_session_handler is None:
+            logging.debug("No '_remote_session_handler' variable present in local_ns.")
+            return
+
+        res = remote_session_handler.get_authorized_manager().plans_allowed()
+        if not res["success"]:
+            logging.warning("Failed to request available plans: %s", res["msg"])
+        else:
+            if not hasattr(self, "plan_whitelist"):
+                logging.warning("No plan whitelist has been set. Using the empty set.")
+                self.plan_whitelist = set()
+            # We need to modify the original one, not the 'local_ns', which is a copy.
+            get_ipython().push({"P": set(res["plans_allowed"]) & set(self.plan_whitelist)})

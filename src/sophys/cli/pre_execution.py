@@ -83,7 +83,8 @@ LAST = None
 monitor.start()
 
 # Leave this last so device instantiation errors do not prevent everything else from working
-D = None
-sophys_logger.debug("Instantiating and connecting to devices...")
-D = SimpleNamespace(**instantiate_devices())
-sophys_logger.debug("Instantiation completed successfully!")
+if LOCAL_MODE:
+    D = None
+    sophys_logger.debug("Instantiating and connecting to devices...")
+    D = SimpleNamespace(**instantiate_devices())
+    sophys_logger.debug("Instantiation completed successfully!")
