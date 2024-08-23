@@ -138,7 +138,10 @@ class PlanCount(PlanCLI):
 
             return functools.partial(self._plan, detector, num=num)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            raise NotImplementedError
+            detector = parsed_namespace.detectors
+            num = parsed_namespace.num
+
+            return BPlan(self._plan_name, detector, num=num)
 
 
 class PlanScan(PlanCLI):
