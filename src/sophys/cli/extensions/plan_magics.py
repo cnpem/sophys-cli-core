@@ -12,10 +12,20 @@ from bluesky.run_engine import PAUSE_MSG
 
 from sophys.common.utils.registry import find_all as registry_find_all
 
+try:
+    from bluesky_queueserver_api.item import BPlan
+    remote_control_available = True
+except ImportError:
+    remote_control_available = False
+
 
 class ModeOfOperation(IntEnum):
     Local = 0
     Remote = 1
+
+
+class NoRemoteControlException(Exception):
+    ...
 
 
 class PlanCLI:
@@ -73,11 +83,21 @@ class PlanCLI:
             if self._sent_help_message:
                 self._sent_help_message = False
                 return
-            return self._create_plan_gen(parsed_namespace, local_ns)
+
+            if self._mode_of_operation == ModeOfOperation.Remote and not remote_control_available:
+                raise NoRemoteControlException
+
+            return self._create_plan(parsed_namespace, local_ns)
 
         return __inner
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
+    def _create_plan(self, parsed_namespace, local_ns):
+        """
+        Create the plan to run.
+
+        In local mode, it returns a generator of the plan. In remote mode,
+        it returns a `BPlan` instance with the proper arguments.
+        """
         pass
 
 
@@ -89,7 +109,7 @@ class PlanMV(PlanCLI):
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
+    def _create_plan(self, parsed_namespace, local_ns):
         args = []
         for i in range(0, len(parsed_namespace.args), 2):
             obj_str, pos_str = parsed_namespace.args[i:i+2]
@@ -111,11 +131,11 @@ class PlanCount(PlanCLI):
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-        num = parsed_namespace.num
-
+    def _create_plan(self, parsed_namespace, local_ns):
         if self._mode_of_operation == ModeOfOperation.Local:
+            detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
+            num = parsed_namespace.num
+
             return functools.partial(self._plan, detector, num=num)
         if self._mode_of_operation == ModeOfOperation.Remote:
             raise NotImplementedError
@@ -131,7 +151,7 @@ class PlanScan(PlanCLI):
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
+    def _create_plan(self, parsed_namespace, local_ns):
         detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
         args = []
         motors_str_list = parsed_namespace.motors
@@ -161,7 +181,7 @@ class PlanGridScan(PlanCLI):
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
+    def _create_plan(self, parsed_namespace, local_ns):
         detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
         args = []
         motors_str_list = parsed_namespace.motors
@@ -209,12 +229,12 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
         parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
 
         try:
-            plan_gen = run_callback(parsed_namespace, local_ns)
-            if plan_gen is None:
+            plan = run_callback(parsed_namespace, local_ns)
+            if plan is None:
                 return
 
             if mode_of_operation == ModeOfOperation.Local:
-                ret = local_ns["RE"](plan_gen())
+                ret = local_ns["RE"](plan())
                 finish_msg = "Plan has finished successfully!"
 
                 if ret is None:
@@ -224,8 +244,20 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
 
                 return finish_msg
             if mode_of_operation == ModeOfOperation.Remote:
-                raise NotImplementedError
-        except TypeError as e:
+                handler = local_ns.get("_remote_session_handler", None)
+                if handler is None:
+                    raise NoRemoteControlException
+
+                manager = handler.get_authorized_manager()
+                response = manager.item_execute(plan)
+
+                if response["success"]:
+                    finish_msg = "Plan has been submitted successfully!"
+                else:
+                    finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
+
+                return finish_msg
+        except Exception as e:
             print()
             print("Failed to run the provided plan.")
             print("Reason:")
