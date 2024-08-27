@@ -38,7 +38,7 @@ def load_ipython_extension(ipython):
     print("")
 
     if not local_mode:
-        _remote_session_handler = RemoteSessionHandler("http://spu-ioc:60610")
+        _remote_session_handler = RemoteSessionHandler("http://10.30.1.50:60610")
         _remote_session_handler.start()
         _remote_session_handler.ask_for_authentication()
 
