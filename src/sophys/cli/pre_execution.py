@@ -41,6 +41,16 @@ def create_kafka_monitor(topic_name: str, bootstrap_servers: list[str], subscrip
 
 
 def execute_at_start():
+    BEC = BestEffortCallback()
+    BEC.disable_plots()
+
+    # NOTE: This is like so because otherwise we either have to force a matplotlib backend
+    # , or the table printing functionality doesn't work at all in remote settings.
+    # FIXME: This impossibilitates using the graphical callbacks. Find out a better way.
+    BEC_callback = functools.partial(BEC, escape=True)
+
+    globals().update({"BEC": BEC})
+
     if LOCAL_MODE:
         class RunEngineWithoutTracebackOnPause(RunEngine):
             def interruption_wrapper(func):
@@ -83,12 +93,12 @@ def execute_at_start():
 
             # Fallback: use everything local, even if `dbl` doesn't work.
             RE.subscribe(DB.v1.insert)
-            RE.subscribe(BestEffortCallback())
+            RE.subscribe(BEC_callback)
             RE.subscribe(update_last_data)
         else:
             kafka_logger.info("Connected to the kafka broker successfully!")
 
-            monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BestEffortCallback()])
+            monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
             globals().update({"KAFKA_MON": monitor})
 
         # Leave this last so device instantiation errors do not prevent everything else from working
@@ -100,7 +110,7 @@ def execute_at_start():
         globals().update({"RE": RE, "D": D})
 
     else:
-        monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BestEffortCallback()])
+        monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
         globals().update({"KAFKA_MON": monitor})
 
 
