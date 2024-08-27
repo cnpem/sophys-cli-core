@@ -31,8 +31,8 @@ def update_last_data(name, _):
         globals().update({"LAST": DB[-1].table()})
 
 
-def create_kafka_monitor(topic_name: str, subscriptions: list[callable]):
-    monitor = ThreadedMonitor(None, [], topic_name, "kafka.monitor")
+def create_kafka_monitor(topic_name: str, bootstrap_servers: list[str], subscriptions: list[callable]):
+    monitor = ThreadedMonitor(None, [], topic_name, "kafka.monitor", bootstrap_servers=bootstrap_servers)
     for c in subscriptions:
         monitor.subscribe(c)
     monitor.start()
@@ -88,7 +88,7 @@ def execute_at_start():
         else:
             kafka_logger.info("Connected to the kafka broker successfully!")
 
-            monitor = create_kafka_monitor(default_topic_names()[0], [DB.v1.insert, update_last_data, BestEffortCallback()])
+            monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BestEffortCallback()])
             globals().update({"KAFKA_MON": monitor})
 
         # Leave this last so device instantiation errors do not prevent everything else from working
@@ -100,7 +100,7 @@ def execute_at_start():
         globals().update({"RE": RE, "D": D})
 
     else:
-        monitor = create_kafka_monitor(default_topic_names()[0], [DB.v1.insert, update_last_data, BestEffortCallback()])
+        monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BestEffortCallback()])
         globals().update({"KAFKA_MON": monitor})
 
 
