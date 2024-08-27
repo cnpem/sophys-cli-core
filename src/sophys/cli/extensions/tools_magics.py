@@ -27,10 +27,12 @@ class KBLMagics(Magics):
             default_tn = local_ns["default_topic_names"]()[0]
             command_line = ["kbl", default_tn, "--bootstrap-servers", " ".join(default_bss)]
 
+        kwargs = {"start_new_session": True}
+
         if local_ns["DEBUG"]:
-            proc = subprocess.Popen(command_line)
+            proc = subprocess.Popen(command_line, **kwargs)
         else:
-            proc = subprocess.Popen(command_line,
+            proc = subprocess.Popen(command_line, **kwargs,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         logging.info(f"Running {command_line} in a new process... (PID={proc.pid})")
