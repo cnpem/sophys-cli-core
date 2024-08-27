@@ -110,16 +110,22 @@ class PlanMV(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        args = []
-        for i in range(0, len(parsed_namespace.args), 2):
-            obj_str, pos_str = parsed_namespace.args[i:i+2]
-            args.append(self.get_real_devices([obj_str], local_ns)[0])
-            args.append(float(pos_str))
-
         if self._mode_of_operation == ModeOfOperation.Local:
+            args = []
+            for i in range(0, len(parsed_namespace.args), 2):
+                obj_str, pos_str = parsed_namespace.args[i:i+2]
+                args.append(self.get_real_devices([obj_str], local_ns)[0])
+                args.append(float(pos_str))
+
             return functools.partial(self._plan, *args)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            raise NotImplementedError
+            args = []
+            for i in range(0, len(parsed_namespace.args), 2):
+                obj_str, pos_str = parsed_namespace.args[i:i+2]
+                args.append(obj_str)
+                args.append(float(pos_str))
+
+            return BPlan(self._plan.__name__, *args)
 
 
 class PlanCount(PlanCLI):
