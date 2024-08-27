@@ -25,8 +25,9 @@ def load_ipython_extension(ipython):
 
     ipython.register_magics(KBLMagics)
 
-    ipython.register_magics(HTTPMagics)
-    ipython.magics_manager.registry["HTTPMagics"].plan_whitelist = PLAN_WHITELIST
+    if not local_mode:
+        ipython.register_magics(HTTPMagics)
+        ipython.magics_manager.registry["HTTPMagics"].plan_whitelist = PLAN_WHITELIST
 
     print("")
     print("The custom available commands are:")
