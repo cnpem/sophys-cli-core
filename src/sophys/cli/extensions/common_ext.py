@@ -3,6 +3,7 @@ from .tools_magics import KBLMagics, HTTPMagics
 
 from .plan_magics import PlanMV, PlanCount, PlanScan, PlanGridScan
 
+from .. import BANNER_NAME_EXTEND
 from ..http_utils import RemoteSessionHandler
 
 
@@ -28,10 +29,10 @@ def load_ipython_extension(ipython):
     ipython.magics_manager.registry["HTTPMagics"].plan_whitelist = PLAN_WHITELIST
 
     print("")
-    print("    The custom available commands are:")
+    print("The custom available commands are:")
     for registered_magics in ipython.magics_manager.registry.values():
         if hasattr(registered_magics, "description"):
-            print("\n".join(f"    {i}" for i in registered_magics.description()))
+            print("\n".join(f"{name:<{BANNER_NAME_EXTEND}}: {desc}" for name, desc in registered_magics.description()))
     print("")
     print("")
 

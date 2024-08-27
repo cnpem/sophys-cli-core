@@ -10,7 +10,7 @@ from IPython.core.magic import Magics, magics_class, line_magic, needs_local_sco
 class ToolMagicBase(ABC):
     @staticmethod
     @abstractmethod
-    def description() -> list[str]:
+    def description() -> list[tuple[str, str]]:
         pass
 
 
@@ -40,7 +40,7 @@ class KBLMagics(Magics):
     @staticmethod
     def description():
         tools = []
-        tools.append("kbl: \t\tOpen kafka-bluesky-live")
+        tools.append(("kbl", "Open kafka-bluesky-live"))
         return tools
 
 
@@ -82,6 +82,6 @@ class HTTPMagics(Magics):
     @staticmethod
     def description():
         tools = []
-        tools.append("reload_devices: \tReload the available devices list (D).")
-        tools.append("reload_plans: \tReload the available plans list (P).")
+        tools.append(("reload_devices", "Reload the available devices list (D)."))
+        tools.append(("reload_plans", "Reload the available plans list (P)."))
         return tools

@@ -3,6 +3,18 @@ from pathlib import Path
 
 from traitlets.config import Config
 
+from . import BANNER_NAME_EXTEND
+
+
+variables_desc = {
+    "BEAMLINE": "The currently configured beamline.",
+    "D": "The list of available devices (to the current user).",
+    "P": "The list of available plans (to the current user).",
+    "RE": "The Bluesky run engine.",
+    "DB": "A databroker instance containing the most recent runs data and metadata.",
+    "LAST": "The last run data, as a Pandas Dataframe.",
+}
+
 
 def entrypoint():
     parser = ArgumentParser()
@@ -51,21 +63,26 @@ def entrypoint():
 
     ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "pre_execution.py")]
 
-    ipy_config.InteractiveShell.banner2 = """
-    The custom available variables are:
-    BEAMLINE: The currently configured beamline.
-    D:        The list of available devices (to the current user).
-    P:        The list of available plans (to the current user).
-    RE:       The Bluesky run engine.
-    DB:       A databroker instance containing the most recent runs data and metadata.
-    LAST:     The last run data, as a Pandas Dataframe.
+    banner_variables = ["BEAMLINE", "D", "P", "DB", "LAST"]
+    if args.local:
+        banner_variables.append("RE")
+    banner_variables.sort()
 
+    banner_lines = []
+    if len(banner_variables) > 0:
+        banner_lines.append("The custom available variables are:")
+        for var in banner_variables:
+            banner_lines.append(f"{var:<{BANNER_NAME_EXTEND}}: {variables_desc[var]}")
+        banner_lines.append("")
 
-    The custom available modules are:
-    bp:  bluesky.plans
-    bps: bluesky.plan_stubs
+    banner_lines += [
+        "The custom available modules are:",
+        f"{"bp":<{BANNER_NAME_EXTEND}}: bluesky.plans",
+        f"{"bps":<{BANNER_NAME_EXTEND}}: bluesky.plan_stubs",
+        "",
+    ]
 
-"""
+    ipy_config.InteractiveShell.banner2 = "\n".join(banner_lines)
 
     ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{beamline}_ext"]
 
