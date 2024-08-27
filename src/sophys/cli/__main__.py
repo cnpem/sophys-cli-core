@@ -13,6 +13,7 @@ variables_desc = {
     "RE": "The Bluesky run engine.",
     "DB": "A databroker instance containing the most recent runs data and metadata.",
     "LAST": "The last run data, as a Pandas Dataframe.",
+    "BEC": "The BestEffortCallback instance hooked up to the run data.",
 }
 
 
@@ -63,7 +64,7 @@ def entrypoint():
 
     ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "pre_execution.py")]
 
-    banner_variables = ["BEAMLINE", "D", "P", "DB", "LAST"]
+    banner_variables = ["BEAMLINE", "D", "P", "DB", "LAST", "BEC"]
     if args.local:
         banner_variables.append("RE")
     banner_variables.sort()
