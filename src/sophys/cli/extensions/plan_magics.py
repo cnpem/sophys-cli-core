@@ -162,20 +162,20 @@ class PlanScan(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-        args = []
-        motors_str_list = parsed_namespace.motors
-        for i in range(0, len(motors_str_list) - 2, 3):
-            obj_str, start_str, end_str = motors_str_list[i:i+3]
-            args.append(self.get_real_devices([obj_str], local_ns)[0])
-            args.append(float(start_str))
-            args.append(float(end_str))
-
-        num = parsed_namespace.num
-        if len(motors_str_list) % 3 == 1:
-            num = int(motors_str_list[-1])
-
         if self._mode_of_operation == ModeOfOperation.Local:
+            detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
+            args = []
+            motors_str_list = parsed_namespace.motors
+            for i in range(0, len(motors_str_list) - 2, 3):
+                obj_str, start_str, end_str = motors_str_list[i:i+3]
+                args.append(self.get_real_devices([obj_str], local_ns)[0])
+                args.append(float(start_str))
+                args.append(float(end_str))
+
+            num = parsed_namespace.num
+            if len(motors_str_list) % 3 == 1:
+                num = int(motors_str_list[-1])
+
             return functools.partial(self._plan, detector, *args, num=num)
         if self._mode_of_operation == ModeOfOperation.Remote:
             raise NotImplementedError
@@ -192,17 +192,17 @@ class PlanGridScan(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-        args = []
-        motors_str_list = parsed_namespace.motors
-        for i in range(0, len(motors_str_list), 4):
-            obj_str, start_str, end_str, num_str = motors_str_list[i:i+4]
-            args.append(self.get_real_devices([obj_str], local_ns)[0])
-            args.append(float(start_str))
-            args.append(float(end_str))
-            args.append(int(num_str))
-
         if self._mode_of_operation == ModeOfOperation.Local:
+            detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
+            args = []
+            motors_str_list = parsed_namespace.motors
+            for i in range(0, len(motors_str_list), 4):
+                obj_str, start_str, end_str, num_str = motors_str_list[i:i+4]
+                args.append(self.get_real_devices([obj_str], local_ns)[0])
+                args.append(float(start_str))
+                args.append(float(end_str))
+                args.append(int(num_str))
+
             return functools.partial(self._plan, detector, *args, snake_axes=parsed_namespace.snake_axes)
         if self._mode_of_operation == ModeOfOperation.Remote:
             raise NotImplementedError
