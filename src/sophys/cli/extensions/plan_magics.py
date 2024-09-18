@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from enum import IntEnum
 
 import functools
@@ -72,7 +72,13 @@ class PlanCLI:
         def _on_exit_override(*_):
             self._sent_help_message = True
 
-        _a = ArgumentParser(self._plan_name, description=inspect.getdoc(self._plan), add_help=True, exit_on_error=False)
+        _a = ArgumentParser(
+            self._plan_name,
+            description=inspect.getdoc(self._plan),
+            formatter_class=RawDescriptionHelpFormatter,
+            add_help=True,
+            exit_on_error=False
+        )
         _a.exit = _on_exit_override
 
         return _a
