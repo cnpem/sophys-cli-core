@@ -7,10 +7,9 @@ import inspect
 
 from IPython.core.magic import Magics, magics_class, record_magic, needs_local_scope
 
-from bluesky.utils import RunEngineInterrupted
-from bluesky.run_engine import PAUSE_MSG
-
 from sophys.common.utils.registry import find_all as registry_find_all
+
+from . import in_debug_mode
 
 try:
     from bluesky_queueserver_api.item import BPlan
@@ -274,8 +273,11 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
             print("Reason:")
             print()
 
+            debug_mode = in_debug_mode(local_ns)
+            limit = None if debug_mode else 1
+
             import traceback
-            tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=1, chain=False)]
+            tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=limit, chain=False)]
             print("\n".join(f"*** {i}" for item in tb for i in item))
 
     record_magic(RealMagics.magics, "line", user_plan_name, __inner)
