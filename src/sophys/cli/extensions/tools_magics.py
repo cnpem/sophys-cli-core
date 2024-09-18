@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
+from . import in_debug_mode
+
 
 class ToolMagicBase(ABC):
     @staticmethod
@@ -29,7 +31,7 @@ class KBLMagics(Magics):
 
         kwargs = {"start_new_session": True}
 
-        if local_ns["DEBUG"]:
+        if in_debug_mode(local_ns):
             proc = subprocess.Popen(command_line, **kwargs)
         else:
             proc = subprocess.Popen(command_line, **kwargs,
