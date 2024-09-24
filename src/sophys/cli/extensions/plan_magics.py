@@ -91,6 +91,13 @@ class PlanCLI:
     def parse_varargs(self, args, local_ns, with_final_num=False, default_num=None):
         """Parse '*args' plan arguments."""
 
+        class MvModel(BaseModel):
+            device_name: Annotated[str, "device"]
+            position: float
+
+            def __init__(self, device_name: str, position: float, **kwargs):
+                super().__init__(device_name=device_name, position=position, **kwargs)
+
         class ScanModel(BaseModel):
             motor_name: Annotated[str, "device"]
             start: float
@@ -109,7 +116,7 @@ class PlanCLI:
                 super().__init__(motor_name=motor_name, start=start, stop=stop, number=number, **kwargs)
 
         __VARARGS_VALIDATION = [
-            (4, GridScanModel), (3, ScanModel)
+            (4, GridScanModel), (3, ScanModel), (2, MvModel)
         ]
 
         true_n_args, true_cls = None, None
@@ -190,21 +197,11 @@ class PlanMV(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        if self._mode_of_operation == ModeOfOperation.Local:
-            args = []
-            for i in range(0, len(parsed_namespace.args), 2):
-                obj_str, pos_str = parsed_namespace.args[i:i+2]
-                args.append(self.get_real_devices([obj_str], local_ns)[0])
-                args.append(float(pos_str))
+        args, _ = self.parse_varargs(parsed_namespace.args, local_ns)
 
+        if self._mode_of_operation == ModeOfOperation.Local:
             return functools.partial(self._plan, *args)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            args = []
-            for i in range(0, len(parsed_namespace.args), 2):
-                obj_str, pos_str = parsed_namespace.args[i:i+2]
-                args.append(obj_str)
-                args.append(float(pos_str))
-
             return BPlan(self._plan.__name__, *args)
 
 
@@ -219,16 +216,13 @@ class PlanCount(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         num = parsed_namespace.num
         delay = parsed_namespace.delay
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-
             return functools.partial(self._plan, detector, num=num, delay=delay)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            detector = parsed_namespace.detectors
-
             return BPlan(self._plan_name, detector, num=num, delay=delay)
 
 
@@ -243,17 +237,14 @@ class PlanScan(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         _args = parsed_namespace.motors
         _num = parsed_namespace.num
         args, num = self.parse_varargs(_args, local_ns, with_final_num=True, default_num=_num)
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-
             return functools.partial(self._plan, detector, *args, num=num)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            detector = parsed_namespace.detectors
-
             return BPlan(self._plan_name, detector, *args, num=num)
 
 
@@ -268,17 +259,15 @@ class PlanGridScan(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         _args = parsed_namespace.motors
         args, _ = self.parse_varargs(_args, local_ns)
 
         snake = parsed_namespace.snake_axes
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
             return functools.partial(self._plan, detector, *args, snake_axes=snake)
-
         if self._mode_of_operation == ModeOfOperation.Remote:
-            detector = parsed_namespace.detectors
             return BPlan(self._plan_name, detector, *args, snake_axes=snake)
 
 
