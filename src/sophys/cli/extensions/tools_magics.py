@@ -48,15 +48,22 @@ class KBLMagics(Magics):
 
 @magics_class
 class HTTPMagics(Magics):
-    @line_magic
-    @needs_local_scope
-    def reload_devices(self, line, local_ns):
+    def get_manager(self, local_ns):
         remote_session_handler = local_ns.get("_remote_session_handler", None)
         if remote_session_handler is None:
             logging.debug("No '_remote_session_handler' variable present in local_ns.")
             return
 
-        res = remote_session_handler.get_authorized_manager().devices_allowed()
+        return remote_session_handler.get_authorized_manager()
+
+    @line_magic
+    @needs_local_scope
+    def reload_devices(self, line, local_ns):
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
+        res = manager.devices_allowed()
         if not res["success"]:
             logging.warning("Failed to request available devices: %s", res["msg"])
         else:
@@ -66,12 +73,11 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def reload_plans(self, line, local_ns):
-        remote_session_handler = local_ns.get("_remote_session_handler", None)
-        if remote_session_handler is None:
-            logging.debug("No '_remote_session_handler' variable present in local_ns.")
+        manager = self.get_manager(local_ns)
+        if manager is None:
             return
 
-        res = remote_session_handler.get_authorized_manager().plans_allowed()
+        res = manager.plans_allowed()
         if not res["success"]:
             logging.warning("Failed to request available plans: %s", res["msg"])
         else:
@@ -97,12 +103,11 @@ class HTTPMagics(Magics):
             print(f"  Loop: {state['plan_queue_mode']['loop']}")
             print()
 
-        remote_session_handler = local_ns.get("_remote_session_handler", None)
-        if remote_session_handler is None:
-            logging.debug("No '_remote_session_handler' variable present in local_ns.")
+        manager = self.get_manager(local_ns)
+        if manager is None:
             return
 
-        res = remote_session_handler.get_authorized_manager().status()
+        res = manager.status()
 
         pretty_print_state(res)
 
