@@ -1,9 +1,12 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from enum import IntEnum
+from typing import Annotated
 
 import functools
 import importlib
 import inspect
+
+from pydantic import BaseModel, ValidationError
 
 from IPython.core.magic import Magics, magics_class, record_magic, needs_local_scope
 
@@ -67,6 +70,73 @@ class PlanCLI:
             raise Exception(f"Could not find detector with name '{dev_name}'.")
 
         return real_devices
+
+    def parse_varargs(self, args, local_ns, with_final_num=False, default_num=None):
+        """Parse '*args' plan arguments."""
+
+        class ScanModel(BaseModel):
+            motor_name: Annotated[str, "device"]
+            start: float
+            stop: float
+
+            def __init__(self, motor_name: str, start: float, stop: float, **kwargs):
+                super().__init__(motor_name=motor_name, start=start, stop=stop, **kwargs)
+
+        class GridScanModel(BaseModel):
+            motor_name: Annotated[str, "device"]
+            start: float
+            stop: float
+            number: int
+
+            def __init__(self, motor_name: str, start: float, stop: float, number: int, **kwargs):
+                super().__init__(motor_name=motor_name, start=start, stop=stop, number=number, **kwargs)
+
+        __VARARGS_VALIDATION = [
+            (4, GridScanModel), (3, ScanModel)
+        ]
+
+        true_n_args, true_cls = None, None
+        for n_args, cls in __VARARGS_VALIDATION:
+            if len(args) < n_args:
+                continue
+
+            try:
+                cls(*args[:n_args])
+            except ValidationError:
+                continue
+
+            true_n_args = n_args
+            true_cls = cls
+            break
+
+        if true_cls is None:
+            raise Exception("No suitable validation class was found.")
+
+        if self._mode_of_operation == ModeOfOperation.Local:
+            parsed = []
+            for i in range(0, len(args) - (true_n_args - 1), true_n_args):
+                model = true_cls(args[i:i+true_n_args])
+
+                for field_name, field_info in model.model_fields.items():
+                    field_data = getattr(model, field_name)
+                    if "device" in field_info.metadata:
+                        field_data = self.get_real_devices([field_data], local_ns)[0]
+                    parsed.append(field_data)
+
+            if with_final_num and len(args) % true_n_args == 1:
+                return parsed, int(args[-1])
+            return parsed, default_num
+        else:
+            parsed = []
+            for i in range(0, len(args) - (true_n_args - 1), true_n_args):
+                model = true_cls(*args[i:i+true_n_args])
+
+                for field_name in model.model_fields.keys():
+                    parsed.append(getattr(model, field_name))
+
+            if with_final_num and len(args) % true_n_args == 1:
+                return parsed, int(args[-1])
+            return parsed, default_num
 
     def create_parser(self):
         def _on_exit_override(*_):
@@ -168,35 +238,16 @@ class PlanScan(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
+        _args = parsed_namespace.motors
+        _num = parsed_namespace.num
+        args, num = self.parse_varargs(_args, local_ns, with_final_num=True, default_num=_num)
+
         if self._mode_of_operation == ModeOfOperation.Local:
             detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-            args = []
-            motors_str_list = parsed_namespace.motors
-            for i in range(0, len(motors_str_list) - 2, 3):
-                obj_str, start_str, end_str = motors_str_list[i:i+3]
-                args.append(self.get_real_devices([obj_str], local_ns)[0])
-                args.append(float(start_str))
-                args.append(float(end_str))
-
-            num = parsed_namespace.num
-            if len(motors_str_list) % 3 == 1:
-                num = int(motors_str_list[-1])
 
             return functools.partial(self._plan, detector, *args, num=num)
         if self._mode_of_operation == ModeOfOperation.Remote:
             detector = parsed_namespace.detectors
-
-            args = []
-            motors_str_list = parsed_namespace.motors
-            for i in range(0, len(motors_str_list) - 2, 3):
-                obj_str, start_str, end_str = motors_str_list[i:i+3]
-                args.append(obj_str)
-                args.append(float(start_str))
-                args.append(float(end_str))
-
-            num = parsed_namespace.num
-            if len(motors_str_list) % 3 == 1:
-                num = int(motors_str_list[-1])
 
             return BPlan(self._plan_name, detector, *args, num=num)
 
