@@ -263,20 +263,18 @@ class PlanGridScan(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
+        _args = parsed_namespace.motors
+        args, _ = self.parse_varargs(_args, local_ns)
+
+        snake = parsed_namespace.snake_axes
+
         if self._mode_of_operation == ModeOfOperation.Local:
             detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-            args = []
-            motors_str_list = parsed_namespace.motors
-            for i in range(0, len(motors_str_list), 4):
-                obj_str, start_str, end_str, num_str = motors_str_list[i:i+4]
-                args.append(self.get_real_devices([obj_str], local_ns)[0])
-                args.append(float(start_str))
-                args.append(float(end_str))
-                args.append(int(num_str))
+            return functools.partial(self._plan, detector, *args, snake_axes=snake)
 
-            return functools.partial(self._plan, detector, *args, snake_axes=parsed_namespace.snake_axes)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            raise NotImplementedError
+            detector = parsed_namespace.detectors
+            return BPlan(self._plan_name, detector, *args, snake_axes=snake)
 
 
 @magics_class
