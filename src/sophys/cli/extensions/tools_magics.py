@@ -111,10 +111,36 @@ class HTTPMagics(Magics):
 
         pretty_print_state(res)
 
+    @line_magic
+    @needs_local_scope
+    def reload_environment(self, line, local_ns):
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
+        env_exists = manager.status()["worker_environment_exists"]
+        if env_exists:
+            print("Closing environment...")
+            res = manager.environment_close()
+            if not res["success"]:
+                logging.warning("Failed to request environment closure: %s", res["msg"])
+                return
+
+            manager.wait_for_idle()
+
+        print("Opening environment...")
+        res = manager.environment_open()
+        if not res["success"]:
+            logging.warning("Failed to request environment opening: %s", res["msg"])
+            return
+
+        manager.wait_for_idle()
+
     @staticmethod
     def description():
         tools = []
         tools.append(("reload_devices", "Reload the available devices list (D)."))
         tools.append(("reload_plans", "Reload the available plans list (P)."))
         tools.append(("query_state", "Query the current server state."))
+        tools.append(("reload_environment", "Reload currently activate environment. Open a new one if the current one is closed."))
         return tools
