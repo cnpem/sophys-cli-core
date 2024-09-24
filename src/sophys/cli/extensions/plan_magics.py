@@ -71,6 +71,23 @@ class PlanCLI:
 
         return real_devices
 
+    def get_real_devices_if_needed(self, device_names: list[str], local_ns):
+        """
+        Get the objects corresponding to a list of device names, if needed.
+        Otherwise, simply return the names as they are.
+
+        Returns
+        -------
+        A list of device objects, corresponding to the 'device_names' list.
+
+        Throws
+        ------
+        Exception - When a device with the specified name could not be found.
+        """
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return self.get_real_devices(device_names, local_ns)
+        return device_names
+
     def parse_varargs(self, args, local_ns, with_final_num=False, default_num=None):
         """Parse '*args' plan arguments."""
 
@@ -112,31 +129,19 @@ class PlanCLI:
         if true_cls is None:
             raise Exception("No suitable validation class was found.")
 
-        if self._mode_of_operation == ModeOfOperation.Local:
-            parsed = []
-            for i in range(0, len(args) - (true_n_args - 1), true_n_args):
-                model = true_cls(args[i:i+true_n_args])
+        parsed = []
+        for i in range(0, len(args) - (true_n_args - 1), true_n_args):
+            model = true_cls(*args[i:i+true_n_args])
 
-                for field_name, field_info in model.model_fields.items():
-                    field_data = getattr(model, field_name)
-                    if "device" in field_info.metadata:
-                        field_data = self.get_real_devices([field_data], local_ns)[0]
-                    parsed.append(field_data)
+            for field_name, field_info in model.model_fields.items():
+                field_data = getattr(model, field_name)
+                if "device" in field_info.metadata:
+                    field_data = self.get_real_devices_if_needed([field_data], local_ns)[0]
+                parsed.append(field_data)
 
-            if with_final_num and len(args) % true_n_args == 1:
-                return parsed, int(args[-1])
-            return parsed, default_num
-        else:
-            parsed = []
-            for i in range(0, len(args) - (true_n_args - 1), true_n_args):
-                model = true_cls(*args[i:i+true_n_args])
-
-                for field_name in model.model_fields.keys():
-                    parsed.append(getattr(model, field_name))
-
-            if with_final_num and len(args) % true_n_args == 1:
-                return parsed, int(args[-1])
-            return parsed, default_num
+        if with_final_num and len(args) % true_n_args == 1:
+            return parsed, int(args[-1])
+        return parsed, default_num
 
     def create_parser(self):
         def _on_exit_override(*_):
