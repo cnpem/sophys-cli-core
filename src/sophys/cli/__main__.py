@@ -17,6 +17,29 @@ variables_desc = {
 }
 
 
+def create_banner_text(args):
+    banner_variables = ["BEAMLINE", "D", "P", "DB", "LAST", "BEC"]
+    if args.local:
+        banner_variables.append("RE")
+    banner_variables.sort()
+
+    banner_lines = []
+    if len(banner_variables) > 0:
+        banner_lines.append("The custom available variables are:")
+        for var in banner_variables:
+            banner_lines.append(f"{var:<{BANNER_NAME_EXTEND}}: {variables_desc[var]}")
+        banner_lines.append("")
+
+    banner_lines += [
+        "The custom available modules are:",
+        f"{"bp":<{BANNER_NAME_EXTEND}}: bluesky.plans",
+        f"{"bps":<{BANNER_NAME_EXTEND}}: bluesky.plan_stubs",
+        "",
+    ]
+
+    return "\n".join(banner_lines)
+
+
 def entrypoint():
     parser = ArgumentParser()
     parser.add_argument("beamline", help="The beamline to load the configuration from.")
@@ -64,26 +87,7 @@ def entrypoint():
 
     ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "pre_execution.py")]
 
-    banner_variables = ["BEAMLINE", "D", "P", "DB", "LAST", "BEC"]
-    if args.local:
-        banner_variables.append("RE")
-    banner_variables.sort()
-
-    banner_lines = []
-    if len(banner_variables) > 0:
-        banner_lines.append("The custom available variables are:")
-        for var in banner_variables:
-            banner_lines.append(f"{var:<{BANNER_NAME_EXTEND}}: {variables_desc[var]}")
-        banner_lines.append("")
-
-    banner_lines += [
-        "The custom available modules are:",
-        f"{"bp":<{BANNER_NAME_EXTEND}}: bluesky.plans",
-        f"{"bps":<{BANNER_NAME_EXTEND}}: bluesky.plan_stubs",
-        "",
-    ]
-
-    ipy_config.InteractiveShell.banner2 = "\n".join(banner_lines)
+    ipy_config.InteractiveShell.banner2 = create_banner_text(args)
 
     ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{beamline}_ext"]
 
