@@ -30,12 +30,13 @@ def create_banner_text(args):
             banner_lines.append(f"{var:<{BANNER_NAME_EXTEND}}: {variables_desc[var]}")
         banner_lines.append("")
 
-    banner_lines += [
-        "The custom available modules are:",
-        f"{"bp":<{BANNER_NAME_EXTEND}}: bluesky.plans",
-        f"{"bps":<{BANNER_NAME_EXTEND}}: bluesky.plan_stubs",
-        "",
-    ]
+    if args.local:
+        banner_lines += [
+            "The custom available modules are:",
+            f"{"bp":<{BANNER_NAME_EXTEND}}: bluesky.plans",
+            f"{"bps":<{BANNER_NAME_EXTEND}}: bluesky.plan_stubs",
+            "",
+        ]
 
     return "\n".join(banner_lines)
 
