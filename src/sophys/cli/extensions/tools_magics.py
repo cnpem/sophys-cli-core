@@ -139,8 +139,8 @@ class HTTPMagics(Magics):
     @staticmethod
     def description():
         tools = []
+        tools.append(("query_state", "Query the current server state."))
         tools.append(("reload_devices", "Reload the available devices list (D)."))
         tools.append(("reload_plans", "Reload the available plans list (P)."))
-        tools.append(("query_state", "Query the current server state."))
         tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed."))
         return tools
