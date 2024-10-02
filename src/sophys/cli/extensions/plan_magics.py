@@ -271,6 +271,42 @@ class PlanGridScan(PlanCLI):
             return BPlan(self._plan_name, detector, *args, snake_axes=snake)
 
 
+class PlanAdaptiveScan(PlanCLI):
+    def create_parser(self):
+        _a = super().create_parser()
+
+        _a.add_argument("-d", "--detectors", nargs='+', type=str)
+        _a.add_argument("-t", "--target_field", type=str)
+        _a.add_argument("-m", "--motor", type=str)
+        _a.add_argument("-st", "--start", type=float)
+        _a.add_argument("-sp", "--stop", type=float)
+        _a.add_argument("-mins", "--min_step", type=float)
+        _a.add_argument("-maxs", "--max_step", type=float)
+        _a.add_argument("-td", "--target_delta", type=float)
+        _a.add_argument("-b", "--backstep", type=bool)
+        _a.add_argument("-th", "--threshold", type=float, default=0.8)
+
+        return _a
+
+    def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+
+        target_field = parsed_namespace.target_field
+        motor = self.get_real_devices_if_needed(parsed_namespace.motor, local_ns)
+        start = parsed_namespace.start
+        stop = parsed_namespace.stop
+        min_step = parsed_namespace.min_step
+        max_step = parsed_namespace.max_step
+        target_delta = parsed_namespace.target_delta
+        backstep = parsed_namespace.backstep
+        threshold = parsed_namespace.threshold
+
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            return BPlan(self._plan_name, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
+
+
 @magics_class
 class RealMagics(Magics):
     ...

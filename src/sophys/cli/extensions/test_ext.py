@@ -1,7 +1,7 @@
 from .plan_magics import get_plans, register_magic_for_plan, RealMagics, ModeOfOperation
 from .tools_magics import KBLMagics, HTTPMagics
 
-from .plan_magics import PlanMV, PlanCount, PlanScan, PlanGridScan
+from .plan_magics import PlanMV, PlanCount, PlanScan, PlanGridScan, PlanAdaptiveScan
 
 from .. import BANNER_NAME_EXTEND
 from ..http_utils import RemoteSessionHandler
@@ -12,6 +12,7 @@ PLAN_WHITELIST = {
     "count": ("count", PlanCount),
     "scan": ("scan", PlanScan),
     "grid_scan": ("grid_scan", PlanGridScan),
+    "adaptive_scan": ("adaptive_scan", PlanAdaptiveScan),
 }
 
 
