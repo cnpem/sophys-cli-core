@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
-from . import in_debug_mode
+from . import in_debug_mode, render_custom_magics
 from ..http_utils import monitor_console
 
 
@@ -44,6 +44,26 @@ class KBLMagics(Magics):
     def description():
         tools = []
         tools.append(("kbl", "Open kafka-bluesky-live"))
+        return tools
+
+
+@magics_class
+class MiscMagics(Magics):
+    @line_magic
+    @needs_local_scope
+    def cs(self, line, local_ns):
+        ipython = get_ipython()
+
+        # Variables
+        print(ipython.banner2)
+        # Magics
+        print("\n".join(render_custom_magics(ipython)))
+
+    @staticmethod
+    def description():
+        tools = []
+        tools.append(("cs", "Print this help page, with all custom functionality summarized."))
+        tools.append(("", ""))
         return tools
 
 
