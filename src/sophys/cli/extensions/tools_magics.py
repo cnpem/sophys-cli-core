@@ -195,6 +195,10 @@ class HTTPMagics(Magics):
             logging.warning("Failed to query the history: %s", res["msg"])
             return
 
+        if len(res["items"]) == 0:
+            print("History is currently empty.")
+            return
+
         from IPython.core import page
         render = "queueserver history - More recent entries are at the top.\n\n\n"
         it = enumerate(reversed(res["items"]))
