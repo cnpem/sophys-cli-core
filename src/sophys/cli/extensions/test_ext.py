@@ -1,9 +1,10 @@
+from . import render_custom_magics
+
 from .plan_magics import get_plans, register_magic_for_plan, RealMagics, ModeOfOperation
-from .tools_magics import KBLMagics, HTTPMagics
+from .tools_magics import KBLMagics, HTTPMagics, MiscMagics
 
 from .plan_magics import PlanMV, PlanCount, PlanScan, PlanGridScan, PlanAdaptiveScan
 
-from .. import BANNER_NAME_EXTEND
 from ..http_utils import RemoteSessionHandler
 
 
@@ -24,19 +25,14 @@ def load_ipython_extension(ipython):
         register_magic_for_plan(plan_name, plan, PLAN_WHITELIST, mode_of_op)
     ipython.register_magics(RealMagics)
 
+    ipython.register_magics(MiscMagics)
     ipython.register_magics(KBLMagics)
 
     if not local_mode:
         ipython.register_magics(HTTPMagics)
         ipython.magics_manager.registry["HTTPMagics"].plan_whitelist = PLAN_WHITELIST
 
-    print("")
-    print("The custom available commands are:")
-    for registered_magics in ipython.magics_manager.registry.values():
-        if hasattr(registered_magics, "description"):
-            print("\n".join(f"{name:<{BANNER_NAME_EXTEND}}: {desc}" for name, desc in registered_magics.description()))
-    print("")
-    print("")
+    print("\n".join(render_custom_magics(ipython)))
 
     if not local_mode:
         _remote_session_handler = RemoteSessionHandler("http://10.30.1.50:60610")
