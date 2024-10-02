@@ -71,6 +71,69 @@ class HTTPMagics(Magics):
 
     @line_magic
     @needs_local_scope
+    def stop(self, line, local_ns):
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
+        state = manager.status()
+
+        if state["queue_stop_pending"]:
+            manager.wait_for_idle()
+            print("Plan stopped successfully.")
+            return
+
+        if state["manager_state"] != "paused":
+            self.pause(line, local_ns)
+
+        res = manager.re_stop()
+        if not res["success"]:
+            logging.warning("Failed to stop plan execution: %s", res["msg"])
+            return
+
+        manager.wait_for_idle_or_paused()
+        print("Plan stopped successfully.")
+
+    @line_magic
+    @needs_local_scope
+    def pause(self, line, local_ns):
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
+        state = manager.status()
+
+        if state["manager_state"] == "paused":
+            print("Plan paused successfully.")
+            return
+
+        if state["manager_state"] != "executing_queue":
+            logging.warning("Failed to pause plan: No plan is running.")
+            return
+
+        res = manager.re_pause()
+        if not res["success"]:
+            logging.warning("Failed to pause plan execution: %s", res["msg"])
+        else:
+            manager.wait_for_idle_or_paused()
+            print("Plan paused successfully.")
+
+    @line_magic
+    @needs_local_scope
+    def resume(self, line, local_ns):
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
+        res = manager.re_resume()
+        if not res["success"]:
+            logging.warning("Failed to resume plan execution: %s", res["msg"])
+        else:
+            manager.wait_for_idle_or_running()
+            print("Plan resumed successfully.")
+
+    @line_magic
+    @needs_local_scope
     def reload_devices(self, line, local_ns):
         manager = self.get_manager(local_ns)
         if manager is None:
@@ -222,9 +285,15 @@ class HTTPMagics(Magics):
     @staticmethod
     def description():
         tools = []
+        tools.append(("", ""))
         tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state."))
+        tools.append(("pause", "Request a pause for the currently executing plan."))
+        tools.append(("resume", "Request the currently paused plan to resume execution."))
+        tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution."))
+        tools.append(("", ""))
         tools.append(("query_state", "Query the current server state."))
         tools.append(("query_history", "Query the current item history, with their statuses."))
+        tools.append(("", ""))
         tools.append(("reload_devices", "Reload the available devices list (D)."))
         tools.append(("reload_plans", "Reload the available plans list (P)."))
         tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed."))
