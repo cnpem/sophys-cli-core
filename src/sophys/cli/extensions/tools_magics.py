@@ -59,6 +59,18 @@ class HTTPMagics(Magics):
 
     @line_magic
     @needs_local_scope
+    def wait_for_idle(self, line, local_ns):
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
+        try:
+            manager.wait_for_idle()
+        except (KeyboardInterrupt, EOFError):
+            pass
+
+    @line_magic
+    @needs_local_scope
     def reload_devices(self, line, local_ns):
         manager = self.get_manager(local_ns)
         if manager is None:
@@ -210,6 +222,7 @@ class HTTPMagics(Magics):
     @staticmethod
     def description():
         tools = []
+        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state."))
         tools.append(("query_state", "Query the current server state."))
         tools.append(("query_history", "Query the current item history, with their statuses."))
         tools.append(("reload_devices", "Reload the available devices list (D)."))
