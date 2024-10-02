@@ -4,9 +4,14 @@ import getpass
 import logging
 import threading
 import time
+import typing
 
-from bluesky_queueserver_api.comm_base import HTTPClientError, RequestParameterError
+from contextlib import contextmanager
+from collections.abc import Callable
+
+from bluesky_queueserver_api.comm_base import HTTPClientError, RequestParameterError, RequestTimeoutError
 from bluesky_queueserver_api.http import REManagerAPI as RM_HTTP_Sync
+from bluesky_queueserver_api.console_monitor import _ConsoleMonitor
 
 
 class RemoteSessionHandler(threading.Thread):
@@ -129,3 +134,55 @@ class RemoteSessionHandler(threading.Thread):
         self._manager.close()
         self._running = False
 
+
+@contextmanager
+def monitor_console(console_monitor: _ConsoleMonitor, on_line_received: typing.Optional[Callable[[str], None]] = None):
+    """
+    Context manager for monitoring remote activity via the console
+    on a background thread.
+
+    Parameters
+    ----------
+    console_monitor : ConsoleMonitor
+        The queueserver-api object connected to the appropriate console feed.
+    on_line_received : callable of str, optional
+        A user-supplied callback to receive messages from the console monitor.
+        By default, it will call `print` on the message, with a gray foreground color.
+    """
+    _logger = logging.getLogger("sophys_cli.monitor_console")
+
+    def default_pretty_print_console_log(x):
+        # Print with a gray font color
+        print(f"\033[38:5:248m{x}\033[0m")
+    if on_line_received is None:
+        on_line_received = default_pretty_print_console_log
+
+    close = False
+
+    def background_job():
+        nonlocal close
+
+        while not close:
+            try:
+                msg = console_monitor.next_msg(timeout=0.2)
+                on_line_received(msg["msg"].strip())
+            except RequestTimeoutError:
+                pass
+
+    _logger.debug("Starting monitoring console %s...", repr(console_monitor))
+
+    console_monitor.clear()
+    _bg = threading.Thread(target=background_job)
+    _bg.start()
+    console_monitor.enable()
+
+    _logger.debug("Started monitoring console %s.", repr(console_monitor))
+    try:
+        yield
+    finally:
+        _logger.debug("Closing console monitor %s...", repr(console_monitor))
+        console_monitor.disable()
+        close = True
+        _bg.join()
+
+        _logger.debug("Console monitor %s closed.", repr(console_monitor))
