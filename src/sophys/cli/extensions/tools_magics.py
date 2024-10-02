@@ -136,10 +136,76 @@ class HTTPMagics(Magics):
 
         manager.wait_for_idle()
 
+    @line_magic
+    @needs_local_scope
+    def query_history(self, line, local_ns):
+        def pretty_render_history_item(item: dict, index: int = 0) -> str:
+            item_type = item["item_type"]
+
+            if item_type == "plan":
+                render = [f"=-- Entry #{index}: Plan --="]
+                render.append(f" Plan name: {item["name"]}")
+                render.append( " Arguments")  # noqa: E201
+
+                args = ", ".join(str(i) for i in item["args"])
+                render.append(f"   args: {args}")
+
+                kwargs = ", ".join("'{}' = {}".format(*i) for i in item["kwargs"].items())
+                render.append(f"   kwargs: {kwargs}")
+
+                render.append( " Run metadata")  # noqa: E201
+                render.append(f"   User: {item["user"]}")
+                render.append(f"   User group: {item["user_group"]}")
+
+                render.append( " Run result")  # noqa: E201
+                result = item["result"]
+
+                render.append(f"   Exit status: {result["exit_status"]}")
+
+                from time import strftime, localtime
+                time_format = "%H:%M:%S (%d/%m/%Y)"
+                start_time = strftime(time_format, localtime(result["time_start"]))
+                stop_time = strftime(time_format, localtime(result["time_stop"]))
+                duration = (result["time_stop"] - result["time_start"])
+                render.append(f"   Time: {start_time} - {stop_time} (Duration: {duration:.3f}s)")
+
+                render.append("")
+
+                if len(uuids_raw := result["run_uids"]) != 0:
+                    uuids = " ".join(uuids_raw)
+                    render.append(f"   Run UUIDs: {uuids}")
+                    scan_ids = " ".join(str(i) for i in result["scan_ids"])
+                    render.append(f"   Scan IDs: {scan_ids}")
+
+                if len(msg := result["msg"]) != 0:
+                    render.append(f"   Exit message: {msg}")
+                    traceback = "\n      ".join(result["traceback"].split("\n"))
+                    render.append(f"   Traceback:\n      {traceback}")
+
+                return "\n".join(render)
+
+            return f"Unhandled item type '{item_type}'"
+
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
+        res = manager.history_get()
+        if not res["success"]:
+            logging.warning("Failed to query the history: %s", res["msg"])
+            return
+
+        from IPython.core import page
+        render = "queueserver history - More recent entries are at the top.\n\n\n"
+        it = enumerate(reversed(res["items"]))
+        render += "\n\n\n".join(pretty_render_history_item(item, i) for i, item in it)
+        page.page(render)
+
     @staticmethod
     def description():
         tools = []
         tools.append(("query_state", "Query the current server state."))
+        tools.append(("query_history", "Query the current item history, with their statuses."))
         tools.append(("reload_devices", "Reload the available devices list (D)."))
         tools.append(("reload_plans", "Reload the available plans list (P)."))
         tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed."))
