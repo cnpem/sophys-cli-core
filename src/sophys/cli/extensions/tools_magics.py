@@ -7,6 +7,7 @@ from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
 from . import in_debug_mode
+from ..http_utils import monitor_console
 
 
 class ToolMagicBase(ABC):
@@ -118,23 +119,24 @@ class HTTPMagics(Magics):
         if manager is None:
             return
 
-        env_exists = manager.status()["worker_environment_exists"]
-        if env_exists:
-            print("Closing environment...")
-            res = manager.environment_close()
+        with monitor_console(manager.console_monitor):
+            env_exists = manager.status()["worker_environment_exists"]
+            if env_exists:
+                print("Closing environment...")
+                res = manager.environment_close()
+                if not res["success"]:
+                    logging.warning("Failed to request environment closure: %s", res["msg"])
+                    return
+
+                manager.wait_for_idle()
+
+            print("Opening environment...")
+            res = manager.environment_open()
             if not res["success"]:
-                logging.warning("Failed to request environment closure: %s", res["msg"])
+                logging.warning("Failed to request environment opening: %s", res["msg"])
                 return
 
             manager.wait_for_idle()
-
-        print("Opening environment...")
-        res = manager.environment_open()
-        if not res["success"]:
-            logging.warning("Failed to request environment opening: %s", res["msg"])
-            return
-
-        manager.wait_for_idle()
 
     @line_magic
     @needs_local_scope
