@@ -90,7 +90,7 @@ def entrypoint():
 
     ipy_config.InteractiveShell.banner2 = create_banner_text(args)
 
-    ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{beamline}_ext"]
+    ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{beamline}"]
 
     ipy_config.TerminalInteractiveShell.confirm_exit = False
 
