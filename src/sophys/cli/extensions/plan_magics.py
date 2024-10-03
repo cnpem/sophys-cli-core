@@ -1,21 +1,33 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from enum import IntEnum
+from typing import Annotated
 
 import functools
 import importlib
 import inspect
 
+from pydantic import BaseModel, ValidationError
+
 from IPython.core.magic import Magics, magics_class, record_magic, needs_local_scope
 
-from bluesky.utils import RunEngineInterrupted
-from bluesky.run_engine import PAUSE_MSG
-
 from sophys.common.utils.registry import find_all as registry_find_all
+
+from . import in_debug_mode
+
+try:
+    from bluesky_queueserver_api.item import BPlan
+    remote_control_available = True
+except ImportError:
+    remote_control_available = False
 
 
 class ModeOfOperation(IntEnum):
     Local = 0
     Remote = 1
+
+
+class NoRemoteControlException(Exception):
+    ...
 
 
 class PlanCLI:
@@ -59,11 +71,96 @@ class PlanCLI:
 
         return real_devices
 
+    def get_real_devices_if_needed(self, device_names: list[str], local_ns):
+        """
+        Get the objects corresponding to a list of device names, if needed.
+        Otherwise, simply return the names as they are.
+
+        Returns
+        -------
+        A list of device objects, corresponding to the 'device_names' list.
+
+        Throws
+        ------
+        Exception - When a device with the specified name could not be found.
+        """
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return self.get_real_devices(device_names, local_ns)
+        return device_names
+
+    def parse_varargs(self, args, local_ns, with_final_num=False, default_num=None):
+        """Parse '*args' plan arguments."""
+
+        class MvModel(BaseModel):
+            device_name: Annotated[str, "device"]
+            position: float
+
+            def __init__(self, device_name: str, position: float, **kwargs):
+                super().__init__(device_name=device_name, position=position, **kwargs)
+
+        class ScanModel(BaseModel):
+            motor_name: Annotated[str, "device"]
+            start: float
+            stop: float
+
+            def __init__(self, motor_name: str, start: float, stop: float, **kwargs):
+                super().__init__(motor_name=motor_name, start=start, stop=stop, **kwargs)
+
+        class GridScanModel(BaseModel):
+            motor_name: Annotated[str, "device"]
+            start: float
+            stop: float
+            number: int
+
+            def __init__(self, motor_name: str, start: float, stop: float, number: int, **kwargs):
+                super().__init__(motor_name=motor_name, start=start, stop=stop, number=number, **kwargs)
+
+        __VARARGS_VALIDATION = [
+            (4, GridScanModel), (3, ScanModel), (2, MvModel)
+        ]
+
+        true_n_args, true_cls = None, None
+        for n_args, cls in __VARARGS_VALIDATION:
+            if len(args) < n_args:
+                continue
+
+            try:
+                cls(*args[:n_args])
+            except ValidationError:
+                continue
+
+            true_n_args = n_args
+            true_cls = cls
+            break
+
+        if true_cls is None:
+            raise Exception("No suitable validation class was found.")
+
+        parsed = []
+        for i in range(0, len(args) - (true_n_args - 1), true_n_args):
+            model = true_cls(*args[i:i+true_n_args])
+
+            for field_name, field_info in model.model_fields.items():
+                field_data = getattr(model, field_name)
+                if "device" in field_info.metadata:
+                    field_data = self.get_real_devices_if_needed([field_data], local_ns)[0]
+                parsed.append(field_data)
+
+        if with_final_num and len(args) % true_n_args == 1:
+            return parsed, int(args[-1])
+        return parsed, default_num
+
     def create_parser(self):
         def _on_exit_override(*_):
             self._sent_help_message = True
 
-        _a = ArgumentParser(self._plan_name, description=inspect.getdoc(self._plan), add_help=True, exit_on_error=False)
+        _a = ArgumentParser(
+            self._plan_name,
+            description=inspect.getdoc(self._plan),
+            formatter_class=RawDescriptionHelpFormatter,
+            add_help=True,
+            exit_on_error=False
+        )
         _a.exit = _on_exit_override
 
         return _a
@@ -73,11 +170,21 @@ class PlanCLI:
             if self._sent_help_message:
                 self._sent_help_message = False
                 return
-            return self._create_plan_gen(parsed_namespace, local_ns)
+
+            if self._mode_of_operation == ModeOfOperation.Remote and not remote_control_available:
+                raise NoRemoteControlException
+
+            return self._create_plan(parsed_namespace, local_ns)
 
         return __inner
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
+    def _create_plan(self, parsed_namespace, local_ns):
+        """
+        Create the plan to run.
+
+        In local mode, it returns a generator of the plan. In remote mode,
+        it returns a `BPlan` instance with the proper arguments.
+        """
         pass
 
 
@@ -89,17 +196,13 @@ class PlanMV(PlanCLI):
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
-        args = []
-        for i in range(0, len(parsed_namespace.args), 2):
-            obj_str, pos_str = parsed_namespace.args[i:i+2]
-            args.append(self.get_real_devices([obj_str], local_ns)[0])
-            args.append(float(pos_str))
+    def _create_plan(self, parsed_namespace, local_ns):
+        args, _ = self.parse_varargs(parsed_namespace.args, local_ns)
 
         if self._mode_of_operation == ModeOfOperation.Local:
             return functools.partial(self._plan, *args)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            raise NotImplementedError
+            return BPlan(self._plan.__name__, *args)
 
 
 class PlanCount(PlanCLI):
@@ -108,17 +211,19 @@ class PlanCount(PlanCLI):
 
         _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-n", "--num", type=int, default=1)
+        _a.add_argument("--delay", type=float, default=0.0)
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
+    def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         num = parsed_namespace.num
+        delay = parsed_namespace.delay
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, num=num)
+            return functools.partial(self._plan, detector, num=num, delay=delay)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            raise NotImplementedError
+            return BPlan(self._plan_name, detector, num=num, delay=delay)
 
 
 class PlanScan(PlanCLI):
@@ -131,24 +236,16 @@ class PlanScan(PlanCLI):
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-        args = []
-        motors_str_list = parsed_namespace.motors
-        for i in range(0, len(motors_str_list) - 2, 3):
-            obj_str, start_str, end_str = motors_str_list[i:i+3]
-            args.append(self.get_real_devices([obj_str], local_ns)[0])
-            args.append(float(start_str))
-            args.append(float(end_str))
-
-        num = parsed_namespace.num
-        if len(motors_str_list) % 3 == 1:
-            num = int(motors_str_list[-1])
+    def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        _args = parsed_namespace.motors
+        _num = parsed_namespace.num
+        args, num = self.parse_varargs(_args, local_ns, with_final_num=True, default_num=_num)
 
         if self._mode_of_operation == ModeOfOperation.Local:
             return functools.partial(self._plan, detector, *args, num=num)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            raise NotImplementedError
+            return BPlan(self._plan_name, detector, *args, num=num)
 
 
 class PlanGridScan(PlanCLI):
@@ -161,21 +258,53 @@ class PlanGridScan(PlanCLI):
 
         return _a
 
-    def _create_plan_gen(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices(parsed_namespace.detectors, local_ns)
-        args = []
-        motors_str_list = parsed_namespace.motors
-        for i in range(0, len(motors_str_list), 4):
-            obj_str, start_str, end_str, num_str = motors_str_list[i:i+4]
-            args.append(self.get_real_devices([obj_str], local_ns)[0])
-            args.append(float(start_str))
-            args.append(float(end_str))
-            args.append(int(num_str))
+    def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        _args = parsed_namespace.motors
+        args, _ = self.parse_varargs(_args, local_ns)
+
+        snake = parsed_namespace.snake_axes
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, *args, snake_axes=parsed_namespace.snake_axes)
+            return functools.partial(self._plan, detector, *args, snake_axes=snake)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            raise NotImplementedError
+            return BPlan(self._plan_name, detector, *args, snake_axes=snake)
+
+
+class PlanAdaptiveScan(PlanCLI):
+    def create_parser(self):
+        _a = super().create_parser()
+
+        _a.add_argument("-d", "--detectors", nargs='+', type=str)
+        _a.add_argument("-t", "--target_field", type=str)
+        _a.add_argument("-m", "--motor", type=str)
+        _a.add_argument("-st", "--start", type=float)
+        _a.add_argument("-sp", "--stop", type=float)
+        _a.add_argument("-mins", "--min_step", type=float)
+        _a.add_argument("-maxs", "--max_step", type=float)
+        _a.add_argument("-td", "--target_delta", type=float)
+        _a.add_argument("-b", "--backstep", type=bool)
+        _a.add_argument("-th", "--threshold", type=float, default=0.8)
+
+        return _a
+
+    def _create_plan(self, parsed_namespace, local_ns):
+        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+
+        target_field = parsed_namespace.target_field
+        motor = self.get_real_devices_if_needed(parsed_namespace.motor, local_ns)
+        start = parsed_namespace.start
+        stop = parsed_namespace.stop
+        min_step = parsed_namespace.min_step
+        max_step = parsed_namespace.max_step
+        target_delta = parsed_namespace.target_delta
+        backstep = parsed_namespace.backstep
+        threshold = parsed_namespace.threshold
+
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            return BPlan(self._plan_name, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
 
 
 @magics_class
@@ -209,12 +338,12 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
         parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
 
         try:
-            plan_gen = run_callback(parsed_namespace, local_ns)
-            if plan_gen is None:
+            plan = run_callback(parsed_namespace, local_ns)
+            if plan is None:
                 return
 
             if mode_of_operation == ModeOfOperation.Local:
-                ret = local_ns["RE"](plan_gen())
+                ret = local_ns["RE"](plan())
                 finish_msg = "Plan has finished successfully!"
 
                 if ret is None:
@@ -224,15 +353,30 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
 
                 return finish_msg
             if mode_of_operation == ModeOfOperation.Remote:
-                raise NotImplementedError
-        except TypeError as e:
+                handler = local_ns.get("_remote_session_handler", None)
+                if handler is None:
+                    raise NoRemoteControlException
+
+                manager = handler.get_authorized_manager()
+                response = manager.item_execute(plan)
+
+                if response["success"]:
+                    finish_msg = "Plan has been submitted successfully!"
+                else:
+                    finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
+
+                return finish_msg
+        except Exception as e:
             print()
             print("Failed to run the provided plan.")
             print("Reason:")
             print()
 
+            debug_mode = in_debug_mode(local_ns)
+            limit = None if debug_mode else 1
+
             import traceback
-            tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=1)]
+            tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=limit, chain=False)]
             print("\n".join(f"*** {i}" for item in tb for i in item))
 
     record_magic(RealMagics.magics, "line", user_plan_name, __inner)

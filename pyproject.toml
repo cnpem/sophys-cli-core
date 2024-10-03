@@ -21,8 +21,11 @@ dependencies = [
   "kafka-python",
   "bluesky",
   "ophyd",
-  "sophys-common",
+  "sophys-common>=3.1.0",
   "kafka-bluesky-live",
+  "databroker<2.0.0",
+  "bluesky-queueserver-api",
+  "pydantic"
 ]
 
 [project.scripts]
