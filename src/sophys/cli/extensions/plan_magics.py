@@ -150,6 +150,11 @@ class PlanCLI:
             return parsed, int(args[-1])
         return parsed, default_num
 
+    def parse_md(self, parsed_namespace):
+        md = [j for i in parsed_namespace.md for j in i]
+        md = {k: v for k, v in (i.split('=') for i in md)}
+        return md
+
     def create_parser(self):
         def _on_exit_override(*_):
             self._sent_help_message = True
@@ -164,6 +169,7 @@ class PlanCLI:
         _a.exit = _on_exit_override
 
         _a.add_argument("-d", "--detectors", nargs='*', type=str, required=False)
+        _a.add_argument("--md", nargs="*", action="append")
 
         return _a
 
@@ -220,11 +226,12 @@ class PlanCount(PlanCLI):
         detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         num = parsed_namespace.num
         delay = parsed_namespace.delay
+        md = self.parse_md(parsed_namespace)
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, num=num, delay=delay)
+            return functools.partial(self._plan, detector, num=num, delay=delay, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, num=num, delay=delay)
+            return BPlan(self._plan_name, detector, num=num, delay=delay, md=md)
 
 
 class PlanScan(PlanCLI):
@@ -241,11 +248,12 @@ class PlanScan(PlanCLI):
         _args = parsed_namespace.motors
         _num = parsed_namespace.num
         args, num = self.parse_varargs(_args, local_ns, with_final_num=True, default_num=_num)
+        md = self.parse_md(parsed_namespace)
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, *args, num=num)
+            return functools.partial(self._plan, detector, *args, num=num, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, *args, num=num)
+            return BPlan(self._plan_name, detector, *args, num=num, md=md)
 
 
 class PlanGridScan(PlanCLI):
@@ -261,13 +269,14 @@ class PlanGridScan(PlanCLI):
         detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         _args = parsed_namespace.motors
         args, _ = self.parse_varargs(_args, local_ns)
+        md = self.parse_md(parsed_namespace)
 
         snake = parsed_namespace.snake_axes
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, *args, snake_axes=snake)
+            return functools.partial(self._plan, detector, *args, snake_axes=snake, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, *args, snake_axes=snake)
+            return BPlan(self._plan_name, detector, *args, snake_axes=snake, md=md)
 
 
 class PlanAdaptiveScan(PlanCLI):
@@ -288,6 +297,7 @@ class PlanAdaptiveScan(PlanCLI):
 
     def _create_plan(self, parsed_namespace, local_ns):
         detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        md = self.parse_md(parsed_namespace)
 
         target_field = parsed_namespace.target_field
         motor = self.get_real_devices_if_needed(parsed_namespace.motor, local_ns)
@@ -300,9 +310,9 @@ class PlanAdaptiveScan(PlanCLI):
         threshold = parsed_namespace.threshold
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
+            return functools.partial(self._plan, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
+            return BPlan(self._plan_name, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold, md=md)
 
 
 @magics_class
