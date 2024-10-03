@@ -163,6 +163,8 @@ class PlanCLI:
         )
         _a.exit = _on_exit_override
 
+        _a.add_argument("-d", "--detectors", nargs='*', type=str, required=False)
+
         return _a
 
     def create_run_callback(self):
@@ -209,7 +211,6 @@ class PlanCount(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-n", "--num", type=int, default=1)
         _a.add_argument("--delay", type=float, default=0.0)
 
@@ -230,7 +231,6 @@ class PlanScan(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-m", "--motors", nargs='+', type=str)
         _a.add_argument("-n", "--num", type=int, default=1)
 
@@ -252,7 +252,6 @@ class PlanGridScan(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-m", "--motors", nargs='+', type=str)
         _a.add_argument("-s", "--snake_axes", action="store_true", default=False)
 
@@ -275,7 +274,6 @@ class PlanAdaptiveScan(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-t", "--target_field", type=str)
         _a.add_argument("-m", "--motor", type=str)
         _a.add_argument("-st", "--start", type=float)
