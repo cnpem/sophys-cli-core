@@ -1,6 +1,7 @@
 import functools
 
 from .. import BANNER_NAME_EXTEND
+from ..http_utils import RemoteSessionHandler
 
 
 def in_debug_mode(local_ns):
@@ -18,3 +19,14 @@ def render_custom_magics(ipython):
     render.append("")
     render.append("")
     return render
+
+
+def setup_remote_session_handler(ipython, address: str):
+    _remote_session_handler = RemoteSessionHandler(address)
+    _remote_session_handler.start()
+    _remote_session_handler.ask_for_authentication()
+
+    ipython.push({"_remote_session_handler": _remote_session_handler})
+
+    ipython.run_line_magic("reload_devices", "")
+    ipython.run_line_magic("reload_plans", "")
