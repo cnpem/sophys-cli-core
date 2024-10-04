@@ -323,23 +323,29 @@ class RealMagics(Magics):
     ...
 
 
-def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: ModeOfOperation):
+class PlanInformation(BaseModel):
+    user_name: str
+    plan_class: object
+    extra_props: dict = {}
+
+    def __init__(self, user_name: str, plan_class: PlanCLI, **kwargs):
+        super().__init__(user_name=user_name, plan_class=plan_class, extra_props=kwargs)
+
+
+def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation: ModeOfOperation):
     """
     Register a plan as a magic with bash-like syntax.
 
     Parameters
     ----------
-    plan_name : str
-        The name of the plan, as it will be used by the user.
     plan : generator object
         The plan itself.
-    plan_whitelist : dict
-        A dictionary of (plan name) -> (plan magic class), defined in each extension.
+    plan_info : PlanInformation
+        The PlanInformation object for the given plan.
     mode_of_operation : ModeOfOperation
         Whether to run things locally or via a remote service using httpserver.
     """
-    user_plan_name, plan_cls = plan_whitelist[plan_name]
-    plan_obj = plan_cls(user_plan_name, plan, mode_of_operation)
+    plan_obj = plan_info.plan_class(plan_info.user_name, plan, mode_of_operation)
 
     _a = plan_obj.create_parser()
     run_callback = plan_obj.create_run_callback()
@@ -390,10 +396,10 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
             tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=limit, chain=False)]
             print("\n".join(f"*** {i}" for item in tb for i in item))
 
-    record_magic(RealMagics.magics, "line", user_plan_name, __inner)
+    record_magic(RealMagics.magics, "line", plan_info.user_name, __inner)
 
 
-def get_plans(beamline: str, plan_whitelist: dict):
+def get_plans(beamline: str, plan_whitelist: list[str]):
     """Get all plans for this beamline, that are whitelisted."""
     def __inner(module):
         for maybe_plan_name in dir(module):
