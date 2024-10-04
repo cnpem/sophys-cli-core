@@ -151,6 +151,9 @@ class PlanCLI:
         return parsed, default_num
 
     def parse_md(self, parsed_namespace):
+        if parsed_namespace.md is None or len(parsed_namespace.md) == 0:
+            return {}
+
         md = [j for i in parsed_namespace.md for j in i]
         md = {k: v for k, v in (i.split('=') for i in md)}
         return md
