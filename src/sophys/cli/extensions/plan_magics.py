@@ -171,7 +171,7 @@ class PlanCLI:
         )
         _a.exit = _on_exit_override
 
-        _a.add_argument("-d", "--detectors", nargs='*', type=str, required=False)
+        _a.add_argument("-d", "--detectors", nargs='*', type=str, required=False, default=[])
         _a.add_argument("--md", nargs="*", action="append")
 
         return _a
