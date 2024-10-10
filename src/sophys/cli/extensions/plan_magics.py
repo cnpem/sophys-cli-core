@@ -324,12 +324,13 @@ class RealMagics(Magics):
 
 
 class PlanInformation(BaseModel):
+    plan_name: str
     user_name: str
     plan_class: object
     extra_props: dict = {}
 
-    def __init__(self, user_name: str, plan_class: PlanCLI, **kwargs):
-        super().__init__(user_name=user_name, plan_class=plan_class, extra_props=kwargs)
+    def __init__(self, plan_name: str, user_name: str, plan_class: PlanCLI, **kwargs):
+        super().__init__(plan_name=plan_name, user_name=user_name, plan_class=plan_class, extra_props=kwargs)
 
 
 def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation: ModeOfOperation):
@@ -399,14 +400,31 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
     record_magic(RealMagics.magics, "line", plan_info.user_name, __inner)
 
 
-def get_plans(beamline: str, plan_whitelist: list[str]):
+class PlanWhitelist(list[PlanInformation]):
+    def find_by_plan_name(self, plan_name: str):
+        return next(filter(lambda pi: pi.plan_name == plan_name, self))
+
+    def __contains__(self, o):
+        if isinstance(o, str):
+            return any(plan_information.plan_name == o for plan_information in self)
+        return super().__contains__(o)
+
+    def __and__(self, o):
+        if isinstance(o, set):
+            return {pi.plan_name for pi in self} & o
+        return super().__and__(o)
+
+
+def get_plans(beamline: str, plan_whitelist: PlanWhitelist):
     """Get all plans for this beamline, that are whitelisted."""
     def __inner(module):
         for maybe_plan_name in dir(module):
             if maybe_plan_name not in plan_whitelist:
                 continue
-            maybe_plan = getattr(module, maybe_plan_name)
-            yield (maybe_plan_name, maybe_plan)
+
+            plan_information = plan_whitelist.find_by_plan_name(maybe_plan_name)
+            plan = getattr(module, maybe_plan_name)
+            yield (plan_information, plan)
 
     try:
         from sophys.common.plans import annotated_default_plans as bp
