@@ -35,6 +35,6 @@ def setup_remote_session_handler(ipython, address: str):
 def setup_plan_magics(ipython, sophys_name: str, plan_whitelist: dict, mode_of_operation):
     from .plan_magics import register_magic_for_plan, get_plans, RealMagics
 
-    for plan_name, plan in get_plans(sophys_name, plan_whitelist.keys()):
-        register_magic_for_plan(plan, plan_whitelist[plan_name], mode_of_operation)
+    for plan_information, plan in get_plans(sophys_name, plan_whitelist):
+        register_magic_for_plan(plan, plan_information, mode_of_operation)
     ipython.register_magics(RealMagics)

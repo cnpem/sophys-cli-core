@@ -181,7 +181,7 @@ class HTTPMagics(Magics):
                 logging.warning("No plan whitelist has been set. Using the empty set.")
                 self.plan_whitelist = set()
             # We need to modify the original one, not the 'local_ns', which is a copy.
-            get_ipython().push({"P": set(res["plans_allowed"]) & set(self.plan_whitelist)})
+            get_ipython().push({"P": self.plan_whitelist & set(res["plans_allowed"])})
 
     @line_magic
     @needs_local_scope
