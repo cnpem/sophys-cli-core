@@ -104,7 +104,7 @@ class RemoteSessionHandler(threading.Thread):
             time_until_next_refresh -= 1  # Give a bit of leeway
 
             self._logger.debug("Sleeping until next refresh, in %fs...", time_until_next_refresh)
-            time.sleep(time_until_next_refresh)
+            time.sleep(abs(time_until_next_refresh))
 
             time_until_next_session = self._total_refresh_token_valid_time - (time.monotonic() - self._last_session_time)
             if time_until_next_session < 1:  # Some leeway, could be 0 too
