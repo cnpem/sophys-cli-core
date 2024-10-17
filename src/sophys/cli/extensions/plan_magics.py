@@ -413,7 +413,7 @@ class PlanWhitelist(list[PlanInformation]):
 
     def __and__(self, o):
         if isinstance(o, set):
-            return {pi.plan_name for pi in self} & o
+            return {pi.user_name for pi in self if pi.plan_name in o}
         return super().__and__(o)
 
 
