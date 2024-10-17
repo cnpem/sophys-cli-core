@@ -31,8 +31,9 @@ class NoRemoteControlException(Exception):
 
 
 class PlanCLI:
-    def __init__(self, user_plan_name: str, plan, mode_of_operation: ModeOfOperation):
-        self._plan_name = user_plan_name
+    def __init__(self, user_plan_name: str, plan_name: str, plan, mode_of_operation: ModeOfOperation):
+        self._user_plan_name = user_plan_name
+        self._plan_name = plan_name
         self._plan = plan
 
         self._mode_of_operation = mode_of_operation
@@ -164,7 +165,7 @@ class PlanCLI:
             self._sent_help_message = True
 
         _a = ArgumentParser(
-            self._plan_name,
+            self._user_plan_name,
             description=inspect.getdoc(self._plan),
             formatter_class=RawDescriptionHelpFormatter,
             add_help=True,
@@ -347,7 +348,7 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
     mode_of_operation : ModeOfOperation
         Whether to run things locally or via a remote service using httpserver.
     """
-    plan_obj = plan_info.plan_class(plan_info.user_name, plan, mode_of_operation)
+    plan_obj = plan_info.plan_class(plan_info.user_name, plan_info.plan_name, plan, mode_of_operation)
 
     _a = plan_obj.create_parser()
     run_callback = plan_obj.create_run_callback()
