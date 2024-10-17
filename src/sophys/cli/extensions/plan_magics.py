@@ -155,8 +155,8 @@ class PlanCLI:
             return {}
 
         md = [j for i in parsed_namespace.md for j in i]
-        md_it = (i.split('=') for i in md)
-        md = {k: v.strip('\" ') for k, v in md_it}
+        md_it = (i.partition('=') for i in md)
+        md = {k: v.strip('\" ') for k, _, v in md_it}
         return md
 
     def create_parser(self):
