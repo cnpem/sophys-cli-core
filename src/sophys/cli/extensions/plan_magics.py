@@ -429,7 +429,7 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
                     finish_msg += f" | Run UID: {ret[0]}"
 
                 for sub in post_submission_callbacks:
-                    sub(local_ns)
+                    sub()
 
                 return finish_msg
             if mode_of_operation == ModeOfOperation.Remote:
@@ -446,7 +446,7 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
                     finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
 
                 for sub in post_submission_callbacks:
-                    sub(local_ns)
+                    sub()
 
                 return finish_msg
         except Exception as e:
