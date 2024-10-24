@@ -168,6 +168,8 @@ class HTTPMagics(Magics):
         if not res["success"]:
             self._logger.warning("Failed to request available devices: %s", res["msg"])
         else:
+            self._logger.debug("Upstream allowed devices: %s", " ".join(res["devices_allowed"].keys()))
+
             # We need to modify the original one, not the 'local_ns', which is a copy.
             get_ipython().push({"D": set(res["devices_allowed"])})
 
@@ -185,6 +187,9 @@ class HTTPMagics(Magics):
             if not hasattr(self, "plan_whitelist"):
                 self._logger.warning("No plan whitelist has been set. Using the empty set.")
                 self.plan_whitelist = set()
+
+            self._logger.debug("Upstream allowed plans: %s", " ".join(res["plans_allowed"].keys()))
+
             # We need to modify the original one, not the 'local_ns', which is a copy.
             get_ipython().push({"P": self.plan_whitelist & set(res["plans_allowed"])})
 
