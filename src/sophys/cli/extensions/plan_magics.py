@@ -391,7 +391,7 @@ class PlanInformation(BaseModel):
             plan_obj.pre_processing_md = self.extra_props["pre_processing_md"]
 
 
-def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation: ModeOfOperation):
+def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation: ModeOfOperation, post_submission_callbacks: list[callable]):
     """
     Register a plan as a magic with bash-like syntax.
 
@@ -428,6 +428,9 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
                 elif len(ret) > 0:
                     finish_msg += f" | Run UID: {ret[0]}"
 
+                for sub in post_submission_callbacks:
+                    sub(local_ns)
+
                 return finish_msg
             if mode_of_operation == ModeOfOperation.Remote:
                 handler = local_ns.get("_remote_session_handler", None)
@@ -441,6 +444,9 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
                     finish_msg = "Plan has been submitted successfully!"
                 else:
                     finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
+
+                for sub in post_submission_callbacks:
+                    sub(local_ns)
 
                 return finish_msg
         except Exception as e:
