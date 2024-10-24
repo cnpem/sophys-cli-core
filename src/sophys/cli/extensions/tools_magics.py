@@ -122,6 +122,10 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def pause(self, line, local_ns):
+        """https://blueskyproject.io/bluesky-queueserver-api/generated/bluesky_queueserver_api.zmq.REManagerAPI.re_pause.html"""
+        if line == "":
+            line = "immediate"
+
         manager = self.get_manager(local_ns)
         if manager is None:
             return
@@ -136,7 +140,7 @@ class HTTPMagics(Magics):
             self._logger.warning("Failed to pause plan: No plan is running.")
             return
 
-        res = manager.re_pause()
+        res = manager.re_pause(option=line)
         if not res["success"]:
             self._logger.warning("Failed to pause plan execution: %s", res["msg"])
         else:
