@@ -13,7 +13,15 @@ from ..http_utils import monitor_console
 class ToolMagicBase(ABC):
     @staticmethod
     @abstractmethod
-    def description() -> list[tuple[str, str]]:
+    def description() -> list[tuple[str, str] | tuple[str, str, str]]:
+        """
+        Descriptions are of either of the following:
+            2-tuple: (name, description)
+            3-tuple: (name, description, color)
+
+        Colors are ANSI color codes. For reference:
+        https://talyian.github.io/ansicolors/
+        """
         pass
 
 
@@ -43,7 +51,7 @@ class KBLMagics(Magics):
     @staticmethod
     def description():
         tools = []
-        tools.append(("kbl", "Open kafka-bluesky-live"))
+        tools.append(("kbl", "Open kafka-bluesky-live", "\x1b[38;5;82m"))
         return tools
 
 
@@ -340,15 +348,15 @@ class HTTPMagics(Magics):
     def description():
         tools = []
         tools.append(("", ""))
-        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state. Use with 'soft' argument for no stopping controls."))
-        tools.append(("pause", "Request a pause for the currently executing plan."))
-        tools.append(("resume", "Request the currently paused plan to resume execution."))
-        tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution."))
+        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state. Use with 'soft' argument for no stopping controls.", "\x1b[38;5;204m"))
+        tools.append(("pause", "Request a pause for the currently executing plan.", "\x1b[38;5;204m"))
+        tools.append(("resume", "Request the currently paused plan to resume execution.", "\x1b[38;5;204m"))
+        tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution.", "\x1b[38;5;204m"))
         tools.append(("", ""))
-        tools.append(("query_state", "Query the current server state."))
-        tools.append(("query_history", "Query the current item history, with their statuses."))
+        tools.append(("query_state", "Query the current server state.", "\x1b[38;5;69m"))
+        tools.append(("query_history", "Query the current item history, with their statuses.", "\x1b[38;5;69m"))
         tools.append(("", ""))
-        tools.append(("reload_devices", "Reload the available devices list (D)."))
-        tools.append(("reload_plans", "Reload the available plans list (P)."))
-        tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed."))
+        tools.append(("reload_devices", "Reload the available devices list (D).", "\x1b[38;5;222m"))
+        tools.append(("reload_plans", "Reload the available plans list (P).", "\x1b[38;5;222m"))
+        tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed.", "\x1b[38;5;222m"))
         return tools

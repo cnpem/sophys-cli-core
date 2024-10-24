@@ -10,12 +10,21 @@ def in_debug_mode(local_ns):
 
 @functools.lru_cache(maxsize=1)
 def render_custom_magics(ipython):
+    """Render custom magic descriptions."""
     render = []
     render.append("")
     render.append("The custom available commands are:")
     for registered_magics in ipython.magics_manager.registry.values():
         if hasattr(registered_magics, "description"):
-            render.append("\n".join(f"{name:<{BANNER_NAME_EXTEND}}: {desc}" for name, desc in registered_magics.description()))
+            for desc_item in registered_magics.description():
+                name = desc_item[0]
+                desc = desc_item[1]
+
+                if len(desc_item) == 2:
+                    render.append(f"{name:<{BANNER_NAME_EXTEND}}: {desc}")
+                elif len(desc_item) == 3:
+                    color = desc_item[2]
+                    render.append(f"{color}{name:<{BANNER_NAME_EXTEND}}: {desc}\033[0m")
     render.append("")
     render.append("")
     return render
