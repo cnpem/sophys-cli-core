@@ -74,18 +74,22 @@ class HTTPMagics(Magics):
 
         self._logger = logging.getLogger("sophys_cli.tools")
 
-    def get_manager(self, local_ns):
+    def get_manager(self, local_ns=None):
+        """Configure 'local_ns' to None if using nested magics."""
+        if local_ns is None:
+            local_ns = get_ipython().user_ns
+
         remote_session_handler = local_ns.get("_remote_session_handler", None)
         if remote_session_handler is None:
             self._logger.debug("No '_remote_session_handler' variable present in local_ns.")
+            self._logger.debug("local_ns contents: %s", " ".join(local_ns.keys()))
             return
 
         return remote_session_handler.get_authorized_manager()
 
     @line_magic
-    @needs_local_scope
-    def wait_for_idle(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+    def wait_for_idle(self, line):
+        manager = self.get_manager()
         if manager is None:
             return
 
@@ -105,7 +109,7 @@ class HTTPMagics(Magics):
         except KeyboardInterrupt:
             if line != "soft":
                 print("")
-                self.stop(line, local_ns)
+                self.stop(line, None)
 
     @line_magic
     @needs_local_scope
