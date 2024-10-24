@@ -257,8 +257,9 @@ class HTTPMagics(Magics):
                 args = ", ".join(str(i) for i in item["args"])
                 render.append(f"   args: {args}")
 
-                kwargs = ", ".join("'{}' = {}".format(*i) for i in item["kwargs"].items())
-                render.append(f"   kwargs: {kwargs}")
+                if "kwargs" in item:
+                    kwargs = ", ".join("'{}' = {}".format(*i) for i in item["kwargs"].items())
+                    render.append(f"   kwargs: {kwargs}")
 
                 render.append( " Run metadata")  # noqa: E201
                 render.append(f"   User: {item["user"]}")
