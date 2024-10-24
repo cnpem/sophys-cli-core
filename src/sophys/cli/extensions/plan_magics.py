@@ -412,7 +412,10 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
 
     @needs_local_scope
     def __inner(line, local_ns):
-        parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
+        try:
+            parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
+        except Exception:
+            return
 
         try:
             plan = run_callback(parsed_namespace, local_ns)
