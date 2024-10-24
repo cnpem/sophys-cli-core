@@ -89,10 +89,23 @@ class HTTPMagics(Magics):
         if manager is None:
             return
 
+        print("")
+        print("You are now in processing mode.")
+        print("A plan is running, and you can control it with the following:")
+
+        if line != "soft":
+            print("  Ctrl+C: Stop immediately the plan.")
+        else:
+            print("  Ctrl+C: Exit this mode without sending any commands.")
+
+        print("")
+
         try:
             manager.wait_for_idle()
-        except (KeyboardInterrupt, EOFError):
-            pass
+        except KeyboardInterrupt:
+            if line != "soft":
+                print("")
+                self.stop(line, local_ns)
 
     @line_magic
     @needs_local_scope
@@ -129,6 +142,8 @@ class HTTPMagics(Magics):
         manager = self.get_manager(local_ns)
         if manager is None:
             return
+
+        print(f"{line.capitalize()} plan pause requested.")
 
         state = manager.status()
 
@@ -321,7 +336,7 @@ class HTTPMagics(Magics):
     def description():
         tools = []
         tools.append(("", ""))
-        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state."))
+        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state. Use with 'soft' argument for no stopping controls."))
         tools.append(("pause", "Request a pause for the currently executing plan."))
         tools.append(("resume", "Request the currently paused plan to resume execution."))
         tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution."))
