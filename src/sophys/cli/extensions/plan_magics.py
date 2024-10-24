@@ -99,6 +99,12 @@ class PlanCLI:
             def __init__(self, device_name: str, position: float, **kwargs):
                 super().__init__(device_name=device_name, position=position, **kwargs)
 
+        class ReadModel(BaseModel):
+            device_name: Annotated[str, "device"]
+
+            def __init__(self, device_name: str, **kwargs):
+                super().__init__(device_name=device_name, **kwargs)
+
         class ScanModel(BaseModel):
             motor_name: Annotated[str, "device"]
             start: float
@@ -117,7 +123,7 @@ class PlanCLI:
                 super().__init__(motor_name=motor_name, start=start, stop=stop, number=number, **kwargs)
 
         __VARARGS_VALIDATION = [
-            (4, GridScanModel), (3, ScanModel), (2, MvModel)
+            (4, GridScanModel), (3, ScanModel), (2, MvModel), (1, ReadModel)
         ]
 
         true_n_args, true_cls = None, None
@@ -216,6 +222,23 @@ class PlanMV(PlanCLI):
             return functools.partial(self._plan, *args)
         if self._mode_of_operation == ModeOfOperation.Remote:
             return BPlan(self._plan.__name__, *args)
+
+
+class PlanReadMany(PlanCLI):
+    def create_parser(self):
+        _a = super().create_parser()
+
+        _a.add_argument("devices", nargs='+', type=str)
+
+        return _a
+
+    def _create_plan(self, parsed_namespace, local_ns):
+        devices, _ = self.parse_varargs(parsed_namespace.devices, local_ns)
+
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, devices)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            return BPlan(self._plan.__name__, devices)
 
 
 class PlanCount(PlanCLI):
@@ -434,7 +457,7 @@ def get_plans(beamline: str, plan_whitelist: PlanWhitelist):
     except AttributeError:
         pass
     try:
-        from bluesky import plan_stubs as bps
+        from sophys.common.plans import expanded_plan_stubs as bps
         yield from __inner(bps)
     except AttributeError:
         pass
