@@ -69,10 +69,15 @@ class MiscMagics(Magics):
 
 @magics_class
 class HTTPMagics(Magics):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._logger = logging.getLogger("sophys_cli.tools")
+
     def get_manager(self, local_ns):
         remote_session_handler = local_ns.get("_remote_session_handler", None)
         if remote_session_handler is None:
-            logging.debug("No '_remote_session_handler' variable present in local_ns.")
+            self._logger.debug("No '_remote_session_handler' variable present in local_ns.")
             return
 
         return remote_session_handler.get_authorized_manager()
@@ -108,7 +113,7 @@ class HTTPMagics(Magics):
 
         res = manager.re_stop()
         if not res["success"]:
-            logging.warning("Failed to stop plan execution: %s", res["msg"])
+            self._logger.warning("Failed to stop plan execution: %s", res["msg"])
             return
 
         manager.wait_for_idle_or_paused()
@@ -128,12 +133,12 @@ class HTTPMagics(Magics):
             return
 
         if state["manager_state"] != "executing_queue":
-            logging.warning("Failed to pause plan: No plan is running.")
+            self._logger.warning("Failed to pause plan: No plan is running.")
             return
 
         res = manager.re_pause()
         if not res["success"]:
-            logging.warning("Failed to pause plan execution: %s", res["msg"])
+            self._logger.warning("Failed to pause plan execution: %s", res["msg"])
         else:
             manager.wait_for_idle_or_paused()
             print("Plan paused successfully.")
@@ -147,7 +152,7 @@ class HTTPMagics(Magics):
 
         res = manager.re_resume()
         if not res["success"]:
-            logging.warning("Failed to resume plan execution: %s", res["msg"])
+            self._logger.warning("Failed to resume plan execution: %s", res["msg"])
         else:
             manager.wait_for_idle_or_running()
             print("Plan resumed successfully.")
@@ -161,7 +166,7 @@ class HTTPMagics(Magics):
 
         res = manager.devices_allowed()
         if not res["success"]:
-            logging.warning("Failed to request available devices: %s", res["msg"])
+            self._logger.warning("Failed to request available devices: %s", res["msg"])
         else:
             # We need to modify the original one, not the 'local_ns', which is a copy.
             get_ipython().push({"D": set(res["devices_allowed"])})
@@ -175,10 +180,10 @@ class HTTPMagics(Magics):
 
         res = manager.plans_allowed()
         if not res["success"]:
-            logging.warning("Failed to request available plans: %s", res["msg"])
+            self._logger.warning("Failed to request available plans: %s", res["msg"])
         else:
             if not hasattr(self, "plan_whitelist"):
-                logging.warning("No plan whitelist has been set. Using the empty set.")
+                self._logger.warning("No plan whitelist has been set. Using the empty set.")
                 self.plan_whitelist = set()
             # We need to modify the original one, not the 'local_ns', which is a copy.
             get_ipython().push({"P": self.plan_whitelist & set(res["plans_allowed"])})
@@ -220,7 +225,7 @@ class HTTPMagics(Magics):
                 print("Closing environment...")
                 res = manager.environment_close()
                 if not res["success"]:
-                    logging.warning("Failed to request environment closure: %s", res["msg"])
+                    self._logger.warning("Failed to request environment closure: %s", res["msg"])
                     return
 
                 manager.wait_for_idle()
@@ -228,7 +233,7 @@ class HTTPMagics(Magics):
             print("Opening environment...")
             res = manager.environment_open()
             if not res["success"]:
-                logging.warning("Failed to request environment opening: %s", res["msg"])
+                self._logger.warning("Failed to request environment opening: %s", res["msg"])
                 return
 
             manager.wait_for_idle()
@@ -289,7 +294,7 @@ class HTTPMagics(Magics):
 
         res = manager.history_get()
         if not res["success"]:
-            logging.warning("Failed to query the history: %s", res["msg"])
+            self._logger.warning("Failed to query the history: %s", res["msg"])
             return
 
         if len(res["items"]) == 0:
