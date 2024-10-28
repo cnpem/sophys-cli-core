@@ -241,12 +241,14 @@ class PlanMV(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        args, _ = self.parse_varargs(parsed_namespace.args, local_ns)
+        args, _, motors = self.parse_varargs(parsed_namespace.args, local_ns)
+
+        md = self.parse_md(*motors, ns=parsed_namespace)
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, *args)
+            return functools.partial(self._plan, *args, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan.__name__, *args)
+            return BPlan(self._plan.__name__, *args, md=md)
 
 
 class PlanReadMany(PlanCLI):
@@ -258,12 +260,14 @@ class PlanReadMany(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        devices, *_ = self.parse_varargs(parsed_namespace.devices, local_ns)
+        devices, _, names = self.parse_varargs(parsed_namespace.devices, local_ns)
+
+        md = self.parse_md(*names, ns=parsed_namespace)
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, devices)
+            return functools.partial(self._plan, devices, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan.__name__, devices)
+            return BPlan(self._plan.__name__, devices, md=md)
 
 
 class PlanCount(PlanCLI):
