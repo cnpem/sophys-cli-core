@@ -180,11 +180,11 @@ class PlanCLI:
 
     def parse_md(self, *devices, ns):
         if ns.md is None or len(ns.md) == 0:
-            return {}
-
-        md = [j for i in ns.md for j in i]
-        md_it = (i.partition('=') for i in md)
-        md = {k: v.strip('\" ') for k, _, v in md_it}
+            md = {}
+        else:
+            md = [j for i in ns.md for j in i]
+            md_it = (i.partition('=') for i in md)
+            md = {k: v.strip('\" ') for k, _, v in md_it}
 
         for preproc in self.pre_processing_md:
             md = preproc(*devices, md=md)
