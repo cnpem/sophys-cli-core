@@ -197,7 +197,8 @@ class PlanCLI:
 
         _a = ArgumentParser(
             self._user_plan_name,
-            description=inspect.getdoc(self._plan),
+            description=self._description(),
+            usage=self._usage(),
             formatter_class=RawDescriptionHelpFormatter,
             add_help=True,
             exit_on_error=False
@@ -230,6 +231,14 @@ class PlanCLI:
         it returns a `BPlan` instance with the proper arguments.
         """
         pass
+
+    def _description(self):
+        """Description of the plan on the CLI help page."""
+        return inspect.getdoc(self._plan)
+
+    def _usage(self):
+        """Usage description of the plan on the CLI help page."""
+        return None
 
 
 class PlanMV(PlanCLI):
