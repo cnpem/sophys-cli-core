@@ -184,7 +184,7 @@ class PlanCLI:
         else:
             md = [j for i in ns.md for j in i]
             md_it = (i.partition('=') for i in md)
-            md = {k: v.strip('\" ') for k, _, v in md_it}
+            md = {k: v.strip('\"\' ') for k, _, v in md_it}
 
         for preproc in self.pre_processing_md:
             md = preproc(*devices, md=md)
