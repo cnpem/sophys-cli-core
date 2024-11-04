@@ -34,7 +34,8 @@ dev = [
 ]
 ema = [
   "redis",
-  "qtpy"
+  "qtpy",
+  "sophys-ema"
 ]
 all = [
   "sophys-cli[dev,ema]"
