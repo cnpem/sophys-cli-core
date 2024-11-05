@@ -24,7 +24,32 @@ class DataSource:
         raise NotImplementedError
 
 
-class LocalDataSource(DataSource):
+class LocalInMemoryDataSource(DataSource):
+    """Data source backed by an in-memory dictionary."""
+
+    def __init__(self):
+        super().__init__()
+
+        self._data_source: dict[str, set] = dict()
+
+    def get(self, type: DataSource.DataType) -> np.array:
+        return np.array(list(self._data_source.get(type)))
+
+    def add(self, type: DataSource.DataType, value: str):
+        if type not in self._data_source:
+            self._data_source[type] = set(value)
+            return
+
+        self._data_source[type].add(value)
+
+    def remove(self, type: DataSource.DataType, value: str):
+        if type not in self._data_source:
+            return
+
+        self._data_source[type].remove(value)
+
+
+class LocalFileDataSource(DataSource):
     """Data source backed by a local CSV file."""
 
     def __init__(self, path: str):
@@ -33,9 +58,9 @@ class LocalDataSource(DataSource):
         try:
             import pandas as pd
         except ImportError:
-            self._logger.critical("Could not import pandas, required by LocalDataSource.", exc_info=True)
+            self._logger.critical("Could not import pandas, required by LocalFileDataSource.", exc_info=True)
 
-        assert path.endswith(".csv"), "LocalDataSource only accepts CSV files."
+        assert path.endswith(".csv"), "LocalFileDataSource only accepts CSV files."
 
         self._file_contents = pd.read_csv(path)
 
