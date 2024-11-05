@@ -11,6 +11,8 @@ class DataSource:
         DURING = "during"
         AFTER = "after"
 
+        METADATA = "metadata"
+
     def __init__(self):
         self._logger = logging.getLogger("sophys_cli.data_source")
 
@@ -33,11 +35,11 @@ class LocalInMemoryDataSource(DataSource):
         self._data_source: dict[str, set] = dict()
 
     def get(self, type: DataSource.DataType) -> np.array:
-        return np.array(list(self._data_source.get(type)))
+        return np.array(list(self._data_source.get(type, [])))
 
     def add(self, type: DataSource.DataType, value: str):
         if type not in self._data_source:
-            self._data_source[type] = set(value)
+            self._data_source[type] = {value}
             return
 
         self._data_source[type].add(value)
