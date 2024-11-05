@@ -13,7 +13,15 @@ from ..http_utils import monitor_console
 class ToolMagicBase(ABC):
     @staticmethod
     @abstractmethod
-    def description() -> list[tuple[str, str]]:
+    def description() -> list[tuple[str, str] | tuple[str, str, str]]:
+        """
+        Descriptions are of either of the following:
+            2-tuple: (name, description)
+            3-tuple: (name, description, color)
+
+        Colors are ANSI color codes. For reference:
+        https://talyian.github.io/ansicolors/
+        """
         pass
 
 
@@ -43,7 +51,7 @@ class KBLMagics(Magics):
     @staticmethod
     def description():
         tools = []
-        tools.append(("kbl", "Open kafka-bluesky-live"))
+        tools.append(("kbl", "Open kafka-bluesky-live", "\x1b[38;5;82m"))
         return tools
 
 
@@ -69,25 +77,47 @@ class MiscMagics(Magics):
 
 @magics_class
 class HTTPMagics(Magics):
-    def get_manager(self, local_ns):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._logger = logging.getLogger("sophys_cli.tools")
+
+    def get_manager(self, local_ns=None):
+        """Configure 'local_ns' to None if using nested magics."""
+        if local_ns is None:
+            local_ns = get_ipython().user_ns
+
         remote_session_handler = local_ns.get("_remote_session_handler", None)
         if remote_session_handler is None:
-            logging.debug("No '_remote_session_handler' variable present in local_ns.")
+            self._logger.debug("No '_remote_session_handler' variable present in local_ns.")
+            self._logger.debug("local_ns contents: %s", " ".join(local_ns.keys()))
             return
 
         return remote_session_handler.get_authorized_manager()
 
     @line_magic
-    @needs_local_scope
-    def wait_for_idle(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+    def wait_for_idle(self, line):
+        manager = self.get_manager()
         if manager is None:
             return
 
+        print("")
+        print("You are now in processing mode.")
+        print("A plan is running, and you can control it with the following:")
+
+        if line != "soft":
+            print("  Ctrl+C: Stop immediately the plan.")
+        else:
+            print("  Ctrl+C: Exit this mode without sending any commands.")
+
+        print("")
+
         try:
             manager.wait_for_idle()
-        except (KeyboardInterrupt, EOFError):
-            pass
+        except KeyboardInterrupt:
+            if line != "soft":
+                print("")
+                self.stop(line, None)
 
     @line_magic
     @needs_local_scope
@@ -108,7 +138,7 @@ class HTTPMagics(Magics):
 
         res = manager.re_stop()
         if not res["success"]:
-            logging.warning("Failed to stop plan execution: %s", res["msg"])
+            self._logger.warning("Failed to stop plan execution: %s", res["msg"])
             return
 
         manager.wait_for_idle_or_paused()
@@ -117,9 +147,15 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def pause(self, line, local_ns):
+        """https://blueskyproject.io/bluesky-queueserver-api/generated/bluesky_queueserver_api.zmq.REManagerAPI.re_pause.html"""
+        if line == "":
+            line = "immediate"
+
         manager = self.get_manager(local_ns)
         if manager is None:
             return
+
+        print(f"{line.capitalize()} plan pause requested.")
 
         state = manager.status()
 
@@ -128,12 +164,12 @@ class HTTPMagics(Magics):
             return
 
         if state["manager_state"] != "executing_queue":
-            logging.warning("Failed to pause plan: No plan is running.")
+            self._logger.warning("Failed to pause plan: No plan is running.")
             return
 
-        res = manager.re_pause()
+        res = manager.re_pause(option=line)
         if not res["success"]:
-            logging.warning("Failed to pause plan execution: %s", res["msg"])
+            self._logger.warning("Failed to pause plan execution: %s", res["msg"])
         else:
             manager.wait_for_idle_or_paused()
             print("Plan paused successfully.")
@@ -147,7 +183,7 @@ class HTTPMagics(Magics):
 
         res = manager.re_resume()
         if not res["success"]:
-            logging.warning("Failed to resume plan execution: %s", res["msg"])
+            self._logger.warning("Failed to resume plan execution: %s", res["msg"])
         else:
             manager.wait_for_idle_or_running()
             print("Plan resumed successfully.")
@@ -161,8 +197,10 @@ class HTTPMagics(Magics):
 
         res = manager.devices_allowed()
         if not res["success"]:
-            logging.warning("Failed to request available devices: %s", res["msg"])
+            self._logger.warning("Failed to request available devices: %s", res["msg"])
         else:
+            self._logger.debug("Upstream allowed devices: %s", " ".join(res["devices_allowed"].keys()))
+
             # We need to modify the original one, not the 'local_ns', which is a copy.
             get_ipython().push({"D": set(res["devices_allowed"])})
 
@@ -175,13 +213,16 @@ class HTTPMagics(Magics):
 
         res = manager.plans_allowed()
         if not res["success"]:
-            logging.warning("Failed to request available plans: %s", res["msg"])
+            self._logger.warning("Failed to request available plans: %s", res["msg"])
         else:
             if not hasattr(self, "plan_whitelist"):
-                logging.warning("No plan whitelist has been set. Using the empty set.")
+                self._logger.warning("No plan whitelist has been set. Using the empty set.")
                 self.plan_whitelist = set()
+
+            self._logger.debug("Upstream allowed plans: %s", " ".join(res["plans_allowed"].keys()))
+
             # We need to modify the original one, not the 'local_ns', which is a copy.
-            get_ipython().push({"P": set(res["plans_allowed"]) & set(self.plan_whitelist)})
+            get_ipython().push({"P": self.plan_whitelist & set(res["plans_allowed"])})
 
     @line_magic
     @needs_local_scope
@@ -220,7 +261,7 @@ class HTTPMagics(Magics):
                 print("Closing environment...")
                 res = manager.environment_close()
                 if not res["success"]:
-                    logging.warning("Failed to request environment closure: %s", res["msg"])
+                    self._logger.warning("Failed to request environment closure: %s", res["msg"])
                     return
 
                 manager.wait_for_idle()
@@ -228,7 +269,7 @@ class HTTPMagics(Magics):
             print("Opening environment...")
             res = manager.environment_open()
             if not res["success"]:
-                logging.warning("Failed to request environment opening: %s", res["msg"])
+                self._logger.warning("Failed to request environment opening: %s", res["msg"])
                 return
 
             manager.wait_for_idle()
@@ -247,8 +288,9 @@ class HTTPMagics(Magics):
                 args = ", ".join(str(i) for i in item["args"])
                 render.append(f"   args: {args}")
 
-                kwargs = ", ".join("'{}' = {}".format(*i) for i in item["kwargs"].items())
-                render.append(f"   kwargs: {kwargs}")
+                if "kwargs" in item:
+                    kwargs = ", ".join("'{}' = {}".format(*i) for i in item["kwargs"].items())
+                    render.append(f"   kwargs: {kwargs}")
 
                 render.append( " Run metadata")  # noqa: E201
                 render.append(f"   User: {item["user"]}")
@@ -289,7 +331,7 @@ class HTTPMagics(Magics):
 
         res = manager.history_get()
         if not res["success"]:
-            logging.warning("Failed to query the history: %s", res["msg"])
+            self._logger.warning("Failed to query the history: %s", res["msg"])
             return
 
         if len(res["items"]) == 0:
@@ -306,15 +348,15 @@ class HTTPMagics(Magics):
     def description():
         tools = []
         tools.append(("", ""))
-        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state."))
-        tools.append(("pause", "Request a pause for the currently executing plan."))
-        tools.append(("resume", "Request the currently paused plan to resume execution."))
-        tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution."))
+        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state. Use with 'soft' argument for no stopping controls.", "\x1b[38;5;204m"))
+        tools.append(("pause", "Request a pause for the currently executing plan.", "\x1b[38;5;204m"))
+        tools.append(("resume", "Request the currently paused plan to resume execution.", "\x1b[38;5;204m"))
+        tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution.", "\x1b[38;5;204m"))
         tools.append(("", ""))
-        tools.append(("query_state", "Query the current server state."))
-        tools.append(("query_history", "Query the current item history, with their statuses."))
+        tools.append(("query_state", "Query the current server state.", "\x1b[38;5;69m"))
+        tools.append(("query_history", "Query the current item history, with their statuses.", "\x1b[38;5;69m"))
         tools.append(("", ""))
-        tools.append(("reload_devices", "Reload the available devices list (D)."))
-        tools.append(("reload_plans", "Reload the available plans list (P)."))
-        tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed."))
+        tools.append(("reload_devices", "Reload the available devices list (D).", "\x1b[38;5;222m"))
+        tools.append(("reload_plans", "Reload the available plans list (P).", "\x1b[38;5;222m"))
+        tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed.", "\x1b[38;5;222m"))
         return tools

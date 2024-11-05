@@ -28,6 +28,19 @@ dependencies = [
   "pydantic"
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+ema = [
+  "redis",
+  "qtpy",
+  "sophys-ema"
+]
+all = [
+  "sophys-cli[dev,ema]"
+]
+
 [project.scripts]
 sophys-cli = "sophys.cli.__main__:entrypoint"
 

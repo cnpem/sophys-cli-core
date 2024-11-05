@@ -31,13 +31,27 @@ class NoRemoteControlException(Exception):
 
 
 class PlanCLI:
-    def __init__(self, user_plan_name: str, plan, mode_of_operation: ModeOfOperation):
-        self._plan_name = user_plan_name
+    """
+    Base class for Bluesky plans.
+
+    Attributes
+    ----------
+    pre_processing_md : list of callables
+        This represents a collection of pre-processing steps to apply to metadata
+        before passing it to the plan. The functions have the following signature:
+            (*devices in usage by the plan, metadata dict) -> updated metadata dict
+    """
+
+    def __init__(self, user_plan_name: str, plan_name: str, plan, mode_of_operation: ModeOfOperation):
+        self._user_plan_name = user_plan_name
+        self._plan_name = plan_name
         self._plan = plan
 
         self._mode_of_operation = mode_of_operation
 
         self._sent_help_message = False
+
+        self.pre_processing_md = []
 
     def get_real_devices(self, device_names: list[str], local_ns):
         """
@@ -89,7 +103,13 @@ class PlanCLI:
         return device_names
 
     def parse_varargs(self, args, local_ns, with_final_num=False, default_num=None):
-        """Parse '*args' plan arguments."""
+        """
+        Parse '*args' plan arguments.
+
+        Returns
+        -------
+        tuple of (parsed arguments, number of points, list of device names).
+        """
 
         class MvModel(BaseModel):
             device_name: Annotated[str, "device"]
@@ -97,6 +117,12 @@ class PlanCLI:
 
             def __init__(self, device_name: str, position: float, **kwargs):
                 super().__init__(device_name=device_name, position=position, **kwargs)
+
+        class ReadModel(BaseModel):
+            device_name: Annotated[str, "device"]
+
+            def __init__(self, device_name: str, **kwargs):
+                super().__init__(device_name=device_name, **kwargs)
 
         class ScanModel(BaseModel):
             motor_name: Annotated[str, "device"]
@@ -116,7 +142,7 @@ class PlanCLI:
                 super().__init__(motor_name=motor_name, start=start, stop=stop, number=number, **kwargs)
 
         __VARARGS_VALIDATION = [
-            (4, GridScanModel), (3, ScanModel), (2, MvModel)
+            (4, GridScanModel), (3, ScanModel), (2, MvModel), (1, ReadModel)
         ]
 
         true_n_args, true_cls = None, None
@@ -136,6 +162,7 @@ class PlanCLI:
         if true_cls is None:
             raise Exception("No suitable validation class was found.")
 
+        devices = []
         parsed = []
         for i in range(0, len(args) - (true_n_args - 1), true_n_args):
             model = true_cls(*args[i:i+true_n_args])
@@ -143,25 +170,43 @@ class PlanCLI:
             for field_name, field_info in model.model_fields.items():
                 field_data = getattr(model, field_name)
                 if "device" in field_info.metadata:
+                    devices.append(field_data)
                     field_data = self.get_real_devices_if_needed([field_data], local_ns)[0]
                 parsed.append(field_data)
 
         if with_final_num and len(args) % true_n_args == 1:
-            return parsed, int(args[-1])
-        return parsed, default_num
+            return parsed, int(args[-1]), devices
+        return parsed, default_num, devices
+
+    def parse_md(self, *devices, ns):
+        if ns.md is None or len(ns.md) == 0:
+            md = {}
+        else:
+            md = [j for i in ns.md for j in i]
+            md_it = (i.partition('=') for i in md)
+            md = {k: v.strip('\"\' ') for k, _, v in md_it}
+
+        for preproc in self.pre_processing_md:
+            md = preproc(*devices, md=md)
+
+        return md
 
     def create_parser(self):
         def _on_exit_override(*_):
             self._sent_help_message = True
 
         _a = ArgumentParser(
-            self._plan_name,
-            description=inspect.getdoc(self._plan),
+            self._user_plan_name,
+            description=self._description(),
+            usage=self._usage(),
             formatter_class=RawDescriptionHelpFormatter,
             add_help=True,
             exit_on_error=False
         )
         _a.exit = _on_exit_override
+
+        _a.add_argument("-d", "--detectors", nargs='*', type=str, required=False, default=[])
+        _a.add_argument("--md", nargs="*", action="append")
 
         return _a
 
@@ -187,6 +232,14 @@ class PlanCLI:
         """
         pass
 
+    def _description(self):
+        """Description of the plan on the CLI help page."""
+        return inspect.getdoc(self._plan)
+
+    def _usage(self):
+        """Usage description of the plan on the CLI help page."""
+        return None
+
 
 class PlanMV(PlanCLI):
     def create_parser(self):
@@ -197,85 +250,108 @@ class PlanMV(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        args, _ = self.parse_varargs(parsed_namespace.args, local_ns)
+        args, _, motors = self.parse_varargs(parsed_namespace.args, local_ns)
+
+        md = self.parse_md(*motors, ns=parsed_namespace)
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, *args)
+            return functools.partial(self._plan, *args, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan.__name__, *args)
+            return BPlan(self._plan.__name__, *args, md=md)
+
+
+class PlanReadMany(PlanCLI):
+    def create_parser(self):
+        _a = super().create_parser()
+
+        _a.add_argument("devices", nargs='+', type=str)
+
+        return _a
+
+    def _create_plan(self, parsed_namespace, local_ns):
+        devices, _, names = self.parse_varargs(parsed_namespace.devices, local_ns)
+
+        md = self.parse_md(*names, ns=parsed_namespace)
+
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, devices, md=md)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            return BPlan(self._plan.__name__, devices, md=md)
 
 
 class PlanCount(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-n", "--num", type=int, default=1)
         _a.add_argument("--delay", type=float, default=0.0)
 
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        detectors = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         num = parsed_namespace.num
         delay = parsed_namespace.delay
 
+        md = self.parse_md(*parsed_namespace.detectors, ns=parsed_namespace)
+
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, num=num, delay=delay)
+            return functools.partial(self._plan, detectors, num=num, delay=delay, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, num=num, delay=delay)
+            return BPlan(self._plan_name, detectors, num=num, delay=delay, md=md)
 
 
 class PlanScan(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-m", "--motors", nargs='+', type=str)
         _a.add_argument("-n", "--num", type=int, default=1)
 
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        detectors = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         _args = parsed_namespace.motors
         _num = parsed_namespace.num
-        args, num = self.parse_varargs(_args, local_ns, with_final_num=True, default_num=_num)
+        args, num, motors = self.parse_varargs(_args, local_ns, with_final_num=True, default_num=_num)
+
+        md = self.parse_md(*parsed_namespace.detectors, *motors, ns=parsed_namespace)
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, *args, num=num)
+            return functools.partial(self._plan, detectors, *args, num=num, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, *args, num=num)
+            return BPlan(self._plan_name, detectors, *args, num=num, md=md)
 
 
 class PlanGridScan(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-m", "--motors", nargs='+', type=str)
         _a.add_argument("-s", "--snake_axes", action="store_true", default=False)
 
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        detectors = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         _args = parsed_namespace.motors
-        args, _ = self.parse_varargs(_args, local_ns)
+        args, _, motors = self.parse_varargs(_args, local_ns)
+
+        md = self.parse_md(*parsed_namespace.detectors, *motors, ns=parsed_namespace)
 
         snake = parsed_namespace.snake_axes
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, *args, snake_axes=snake)
+            return functools.partial(self._plan, detectors, *args, snake_axes=snake, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, *args, snake_axes=snake)
+            return BPlan(self._plan_name, detectors, *args, snake_axes=snake, md=md)
 
 
 class PlanAdaptiveScan(PlanCLI):
     def create_parser(self):
         _a = super().create_parser()
 
-        _a.add_argument("-d", "--detectors", nargs='+', type=str)
         _a.add_argument("-t", "--target_field", type=str)
         _a.add_argument("-m", "--motor", type=str)
         _a.add_argument("-st", "--start", type=float)
@@ -289,10 +365,12 @@ class PlanAdaptiveScan(PlanCLI):
         return _a
 
     def _create_plan(self, parsed_namespace, local_ns):
-        detector = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        detectors = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
+        motor = self.get_real_devices_if_needed(parsed_namespace.motor, local_ns)
+
+        md = self.parse_md(*parsed_namespace.detectors, parsed_namespace.motor, ns=parsed_namespace)
 
         target_field = parsed_namespace.target_field
-        motor = self.get_real_devices_if_needed(parsed_namespace.motor, local_ns)
         start = parsed_namespace.start
         stop = parsed_namespace.stop
         min_step = parsed_namespace.min_step
@@ -302,9 +380,9 @@ class PlanAdaptiveScan(PlanCLI):
         threshold = parsed_namespace.threshold
 
         if self._mode_of_operation == ModeOfOperation.Local:
-            return functools.partial(self._plan, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
+            return functools.partial(self._plan, detectors, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
-            return BPlan(self._plan_name, detector, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold)
+            return BPlan(self._plan_name, detectors, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold, md=md)
 
 
 @magics_class
@@ -312,30 +390,45 @@ class RealMagics(Magics):
     ...
 
 
-def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: ModeOfOperation):
+class PlanInformation(BaseModel):
+    plan_name: str
+    user_name: str
+    plan_class: object
+    extra_props: dict = {}
+
+    def __init__(self, plan_name: str, user_name: str, plan_class: PlanCLI, **kwargs):
+        super().__init__(plan_name=plan_name, user_name=user_name, plan_class=plan_class, extra_props=kwargs)
+
+    def apply_to_plan(self, plan_obj: PlanCLI):
+        if "pre_processing_md" in self.extra_props:
+            plan_obj.pre_processing_md = self.extra_props["pre_processing_md"]
+
+
+def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation: ModeOfOperation, post_submission_callbacks: list[callable]):
     """
     Register a plan as a magic with bash-like syntax.
 
     Parameters
     ----------
-    plan_name : str
-        The name of the plan, as it will be used by the user.
     plan : generator object
         The plan itself.
-    plan_whitelist : dict
-        A dictionary of (plan name) -> (plan magic class), defined in each extension.
+    plan_info : PlanInformation
+        The PlanInformation object for the given plan.
     mode_of_operation : ModeOfOperation
         Whether to run things locally or via a remote service using httpserver.
     """
-    user_plan_name, plan_cls = plan_whitelist[plan_name]
-    plan_obj = plan_cls(user_plan_name, plan, mode_of_operation)
+    plan_obj = plan_info.plan_class(plan_info.user_name, plan_info.plan_name, plan, mode_of_operation)
+    plan_info.apply_to_plan(plan_obj)
 
     _a = plan_obj.create_parser()
     run_callback = plan_obj.create_run_callback()
 
     @needs_local_scope
     def __inner(line, local_ns):
-        parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
+        try:
+            parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
+        except Exception:
+            return
 
         try:
             plan = run_callback(parsed_namespace, local_ns)
@@ -351,6 +444,9 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
                 elif len(ret) > 0:
                     finish_msg += f" | Run UID: {ret[0]}"
 
+                for sub in post_submission_callbacks:
+                    sub()
+
                 return finish_msg
             if mode_of_operation == ModeOfOperation.Remote:
                 handler = local_ns.get("_remote_session_handler", None)
@@ -364,6 +460,9 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
                     finish_msg = "Plan has been submitted successfully!"
                 else:
                     finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
+
+                for sub in post_submission_callbacks:
+                    sub()
 
                 return finish_msg
         except Exception as e:
@@ -379,17 +478,40 @@ def register_magic_for_plan(plan_name, plan, plan_whitelist, mode_of_operation: 
             tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=limit, chain=False)]
             print("\n".join(f"*** {i}" for item in tb for i in item))
 
-    record_magic(RealMagics.magics, "line", user_plan_name, __inner)
+    record_magic(RealMagics.magics, "line", plan_info.user_name, __inner)
 
 
-def get_plans(beamline: str, plan_whitelist: dict):
+class PlanWhitelist(list[PlanInformation]):
+    def __init__(self, *infos, **general_extra_props):
+        super().__init__(infos)
+
+        for plan_info in self:
+            plan_info.extra_props.update(general_extra_props)
+
+    def find_by_plan_name(self, plan_name: str):
+        return next(filter(lambda pi: pi.plan_name == plan_name, self))
+
+    def __contains__(self, o):
+        if isinstance(o, str):
+            return any(plan_information.plan_name == o for plan_information in self)
+        return super().__contains__(o)
+
+    def __and__(self, o):
+        if isinstance(o, set):
+            return {pi.user_name for pi in self if pi.plan_name in o}
+        return super().__and__(o)
+
+
+def get_plans(beamline: str, plan_whitelist: PlanWhitelist):
     """Get all plans for this beamline, that are whitelisted."""
     def __inner(module):
         for maybe_plan_name in dir(module):
             if maybe_plan_name not in plan_whitelist:
                 continue
-            maybe_plan = getattr(module, maybe_plan_name)
-            yield (maybe_plan_name, maybe_plan)
+
+            plan_information = plan_whitelist.find_by_plan_name(maybe_plan_name)
+            plan = getattr(module, maybe_plan_name)
+            yield (plan_information, plan)
 
     try:
         from sophys.common.plans import annotated_default_plans as bp
@@ -397,7 +519,7 @@ def get_plans(beamline: str, plan_whitelist: dict):
     except AttributeError:
         pass
     try:
-        from bluesky import plan_stubs as bps
+        from sophys.common.plans import expanded_plan_stubs as bps
         yield from __inner(bps)
     except AttributeError:
         pass
