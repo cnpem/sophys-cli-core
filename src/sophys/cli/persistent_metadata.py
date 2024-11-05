@@ -24,6 +24,12 @@ class PersistentMetadata:
         self._data_source.remove(DataSource.DataType.METADATA, composed_key)
         del self._keys[key]
 
+    def get_entry(self, key: str):
+        filtered = [v for k, v in self.list_key_value_pairs() if k == key]
+        if len(filtered) == 0:
+            return
+        return filtered[0]
+
     def list_entries(self):
         return self._data_source.get(DataSource.DataType.METADATA)
 
