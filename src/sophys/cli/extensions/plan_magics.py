@@ -489,7 +489,7 @@ class PlanWhitelist(list[PlanInformation]):
             plan_info.extra_props.update(general_extra_props)
 
     def find_by_plan_name(self, plan_name: str):
-        return next(filter(lambda pi: pi.plan_name == plan_name, self))
+        return filter(lambda pi: pi.plan_name == plan_name, self)
 
     def __contains__(self, o):
         if isinstance(o, str):
@@ -509,9 +509,10 @@ def get_plans(beamline: str, plan_whitelist: PlanWhitelist):
             if maybe_plan_name not in plan_whitelist:
                 continue
 
-            plan_information = plan_whitelist.find_by_plan_name(maybe_plan_name)
-            plan = getattr(module, maybe_plan_name)
-            yield (plan_information, plan)
+            plans_information = plan_whitelist.find_by_plan_name(maybe_plan_name)
+            for plan_information in plans_information:
+                plan = getattr(module, maybe_plan_name)
+                yield (plan_information, plan)
 
     try:
         from sophys.common.plans import annotated_default_plans as bp
