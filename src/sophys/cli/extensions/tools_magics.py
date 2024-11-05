@@ -67,11 +67,41 @@ class MiscMagics(Magics):
         # Magics
         print("\n".join(render_custom_magics(ipython)))
 
+    @line_magic
+    @needs_local_scope
+    def show_md(self, line, local_ns):
+        print("Configured metadata:")
+        persistent_metadata = get_from_namespace(NamespaceKeys.PERSISTENT_METADATA, ns=local_ns)
+        persistent_metadata.pretty_print_entries()
+
+    @line_magic
+    @needs_local_scope
+    def add_md(self, line, local_ns):
+        persistent_metadata = get_from_namespace(NamespaceKeys.PERSISTENT_METADATA, ns=local_ns)
+
+        args = [k for i in line.split(' ') for k in i.split('=')]
+        for i in range(0, len(args), 2):
+            print(f"Setting metadata key '{args[i]}' to '{args[i+1]}'.")
+            persistent_metadata.add_entry(args[i], args[i+1])
+
+    @line_magic
+    @needs_local_scope
+    def remove_md(self, line, local_ns):
+        persistent_metadata = get_from_namespace(NamespaceKeys.PERSISTENT_METADATA, ns=local_ns)
+
+        keys = line.split(' ')
+        for key in keys:
+            print(f"Removing entry '{key}'.")
+            persistent_metadata.remove_entry(key)
+
     @staticmethod
     def description():
         tools = []
         tools.append(("cs", "Print this help page, with all custom functionality summarized."))
         tools.append(("", ""))
+        tools.append(("show_md", "Print all non-default configured metadata.", "\x1b[38;5;218m"))
+        tools.append(("add_md", "Add a new metadata to the internal state, which will be applied to all next runs.", "\x1b[38;5;218m"))
+        tools.append(("remove_md", "Remove a custom metadata entry, reverting for its normal state.", "\x1b[38;5;218m"))
         return tools
 
 
