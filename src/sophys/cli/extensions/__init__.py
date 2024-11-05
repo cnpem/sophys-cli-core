@@ -9,6 +9,7 @@ from ..http_utils import RemoteSessionHandler
 
 class NamespaceKeys(enum.StrEnum):
     BEST_EFFORT_CALLBACK = "BEC"
+    BLACKLISTED_DESCRIPTIONS = "__blacklisted_magic_descriptions"
     DATABROKER = "DB"
     DEBUG_MODE = "DEBUG"
     DEVICES = "D"
@@ -49,6 +50,8 @@ def in_debug_mode(local_ns):
 @functools.lru_cache(maxsize=1)
 def render_custom_magics(ipython):
     """Render custom magic descriptions."""
+    blacklist = get_from_namespace(NamespaceKeys.BLACKLISTED_DESCRIPTIONS, default=set(), ipython=ipython)
+
     render = []
     render.append("")
     render.append("The custom available commands are:")
@@ -58,11 +61,19 @@ def render_custom_magics(ipython):
                 name = desc_item[0]
                 desc = desc_item[1]
 
-                if len(desc_item) == 2:
+                if name in blacklist:
+                    continue
+
+                if name == desc == "":
+                    render.append("")
+                elif len(desc_item) == 2:
                     render.append(f"{name:<{BANNER_NAME_EXTEND}}: {desc}")
                 elif len(desc_item) == 3:
                     color = desc_item[2]
                     render.append(f"{color}{name:<{BANNER_NAME_EXTEND}}: {desc}\033[0m")
+
+            if render[-1] != "":
+                render.append("")
     render.append("")
     render.append("")
     return render
