@@ -52,11 +52,14 @@ def render_custom_magics(ipython):
     """Render custom magic descriptions."""
     blacklist = get_from_namespace(NamespaceKeys.BLACKLISTED_DESCRIPTIONS, default=set(), ipython=ipython)
 
+    _rendered_magics = []
+
     render = []
     render.append("")
     render.append("The custom available commands are:")
     for registered_magics in ipython.magics_manager.registry.values():
         if hasattr(registered_magics, "description"):
+            _rendered_magics.append((len(render), registered_magics))
             for desc_item in registered_magics.description():
                 name = desc_item[0]
                 desc = desc_item[1]
@@ -72,8 +75,17 @@ def render_custom_magics(ipython):
                     color = desc_item[2]
                     render.append(f"{color}{name:<{BANNER_NAME_EXTEND}}: {desc}\033[0m")
 
-            if render[-1] != "":
-                render.append("")
+    # Add extra spacing between commands of different colors
+    from itertools import pairwise
+    _extra_index = 0
+    for (_, fst), (pos, snd) in pairwise(_rendered_magics):
+        fst_d = fst.description()[-1]
+        snd_d = snd.description()[0]
+
+        if fst_d[-1] != snd_d[-1]:
+            render.insert(pos + _extra_index, "")
+            _extra_index += 1
+
     render.append("")
     render.append("")
     return render
