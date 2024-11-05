@@ -15,6 +15,8 @@ import databroker
 
 from sophys.common.utils.kafka.monitor import ThreadedMonitor
 
+from sophys.cli.extensions import NamespaceKeys, add_to_namespace
+
 sophys_utils = importlib.import_module(f"sophys.{BEAMLINE}.utils")
 default_topic_names = sophys_utils.default_topic_names
 default_bootstrap_servers = sophys_utils.default_bootstrap_servers
@@ -28,7 +30,7 @@ LAST = None
 
 def update_last_data(name, _):
     if name == "stop":
-        globals().update({"LAST": DB[-1].table()})
+        add_to_namespace(NamespaceKeys.LAST_DATA, DB[-1].table(), _globals=globals())
 
 
 def create_kafka_monitor(topic_name: str, bootstrap_servers: list[str], subscriptions: list[callable]):
@@ -49,7 +51,7 @@ def execute_at_start():
     # FIXME: This impossibilitates using the graphical callbacks. Find out a better way.
     BEC_callback = functools.partial(BEC, escape=True)
 
-    globals().update({"BEC": BEC})
+    add_to_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, BEC, _globals=globals())
 
     if LOCAL_MODE:
         class RunEngineWithoutTracebackOnPause(RunEngine):
@@ -99,19 +101,24 @@ def execute_at_start():
             kafka_logger.info("Connected to the kafka broker successfully!")
 
             monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
-            globals().update({"KAFKA_MON": monitor})
+            add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=globals())
 
         # Leave this last so device instantiation errors do not prevent everything else from working
         D = None
         sophys_logger.debug("Instantiating and connecting to devices...")
-        D = SimpleNamespace(**instantiate_devices())
+        _dev = instantiate_devices()
+        D = SimpleNamespace(**_dev)
         sophys_logger.debug("Instantiation completed successfully!")
 
-        globals().update({"RE": RE, "D": D})
+        from sophys.ema.plans.preprocessors import create_mnemonic_names_inserter_preprocessor
+        RE.preprocessors.append(create_mnemonic_names_inserter_preprocessor(_dev.values()))
+
+        add_to_namespace(NamespaceKeys.RUN_ENGINE, RE, _globals=globals())
+        add_to_namespace(NamespaceKeys.DEVICES, D, _globals=globals())
 
     else:
         monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
-        globals().update({"KAFKA_MON": monitor})
+        add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=globals())
 
 
 execute_at_start()

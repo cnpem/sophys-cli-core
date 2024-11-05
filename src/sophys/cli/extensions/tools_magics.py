@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
-from . import in_debug_mode, render_custom_magics
+from . import in_debug_mode, render_custom_magics, NamespaceKeys, get_from_namespace
 from ..http_utils import monitor_console
 
 
@@ -84,10 +84,7 @@ class HTTPMagics(Magics):
 
     def get_manager(self, local_ns=None):
         """Configure 'local_ns' to None if using nested magics."""
-        if local_ns is None:
-            local_ns = get_ipython().user_ns
-
-        remote_session_handler = local_ns.get("_remote_session_handler", None)
+        remote_session_handler = get_from_namespace(NamespaceKeys.REMOTE_SESSION_HANDLER, ns=local_ns)
         if remote_session_handler is None:
             self._logger.debug("No '_remote_session_handler' variable present in local_ns.")
             self._logger.debug("local_ns contents: %s", " ".join(local_ns.keys()))
