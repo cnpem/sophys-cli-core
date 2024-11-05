@@ -374,7 +374,6 @@ class HTTPMagics(Magics):
     @staticmethod
     def description():
         tools = []
-        tools.append(("", ""))
         tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state. Use with 'soft' argument for no stopping controls.", "\x1b[38;5;204m"))
         tools.append(("pause", "Request a pause for the currently executing plan.", "\x1b[38;5;204m"))
         tools.append(("resume", "Request the currently paused plan to resume execution.", "\x1b[38;5;204m"))
