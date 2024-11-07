@@ -428,8 +428,10 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
         try:
             parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
         except Exception as e:
-            print("Parsing the plan arguments has failed:")
-            print("  " + str(e))
+            # FIXME: There should be a better way to check this condition.
+            if "-h" not in line:
+                print("Parsing the plan arguments has failed:")
+                print("  " + str(e))
             return
 
         try:
