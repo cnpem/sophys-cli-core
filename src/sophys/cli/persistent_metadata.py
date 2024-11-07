@@ -38,6 +38,10 @@ class PersistentMetadata:
 
     def pretty_print_entries(self, logger=print):
         key_val_pairs = self.list_key_value_pairs()
+        if len(key_val_pairs) == 0:
+            logger("No metadata is currently set.")
+            return
+
         biggest_key_length = max(len(i) for i, _ in key_val_pairs)
 
         for key, value in self.list_key_value_pairs():
