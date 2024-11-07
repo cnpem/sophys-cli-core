@@ -427,7 +427,9 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
     def __inner(line, local_ns):
         try:
             parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
-        except Exception:
+        except Exception as e:
+            print("Parsing the plan arguments has failed:")
+            print("  " + str(e))
             return
 
         try:
