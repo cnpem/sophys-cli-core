@@ -48,4 +48,5 @@ class PersistentMetadata:
             logger(f"  {key:<{biggest_key_length + 1}}: {value}")
 
     def populate_permanent_md(self, *_, md):
-        return md.update({key: val for key, val in self.list_key_value_pairs()})
+        md.update({key: val for key, val in self.list_key_value_pairs()})
+        return md
