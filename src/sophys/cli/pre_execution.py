@@ -79,9 +79,6 @@ def execute_at_start():
         sophys_devices = importlib.import_module(f"sophys.{BEAMLINE}.devices")
         instantiate_devices = sophys_devices.instantiate_devices
 
-        sophys_plans = importlib.import_module(f"sophys.{BEAMLINE}.plans")
-        globals().update(sophys_plans.__dict__)
-
         make_kafka_callback = sophys_utils.make_kafka_callback
 
         # Kafka callback
