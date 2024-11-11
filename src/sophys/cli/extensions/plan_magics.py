@@ -508,16 +508,26 @@ class PlanWhitelist(list[PlanInformation]):
 
 def get_plans(beamline: str, plan_whitelist: PlanWhitelist):
     """Get all plans for this beamline, that are whitelisted."""
+    visited_plan_names = set()
+
     def __inner(module):
         for maybe_plan_name in dir(module):
             if maybe_plan_name not in plan_whitelist:
+                continue
+            if maybe_plan_name in visited_plan_names:
                 continue
 
             plans_information = plan_whitelist.find_by_plan_name(maybe_plan_name)
             for plan_information in plans_information:
                 plan = getattr(module, maybe_plan_name)
+                visited_plan_names.add(maybe_plan_name)
                 yield (plan_information, plan)
 
+    try:
+        _p = importlib.import_module(f"sophys.{beamline}.plans")
+        yield from __inner(_p)
+    except AttributeError:
+        pass
     try:
         from sophys.common.plans import annotated_default_plans as bp
         yield from __inner(bp)
@@ -528,9 +538,3 @@ def get_plans(beamline: str, plan_whitelist: PlanWhitelist):
         yield from __inner(bps)
     except AttributeError:
         pass
-    try:
-        _p = importlib.import_module(f"sophys.{beamline}.plans")
-        yield from __inner(_p)
-    except AttributeError:
-        pass
-
