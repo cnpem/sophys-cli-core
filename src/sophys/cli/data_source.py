@@ -1,5 +1,6 @@
 import enum
 import logging
+import typing
 
 import numpy as np
 
@@ -19,10 +20,10 @@ class DataSource:
     def get(self, type: DataType) -> np.array:
         raise NotImplementedError
 
-    def add(self, type: DataType, value: str):
+    def add(self, type: DataType, *values: typing.Iterable[str]):
         raise NotImplementedError
 
-    def remove(self, type: DataType, value: str):
+    def remove(self, type: DataType, *values: typing.Iterable[str]):
         raise NotImplementedError
 
 
@@ -37,18 +38,18 @@ class LocalInMemoryDataSource(DataSource):
     def get(self, type: DataSource.DataType) -> np.array:
         return np.array(list(self._data_source.get(type, [])))
 
-    def add(self, type: DataSource.DataType, value: str):
+    def add(self, type: DataSource.DataType, *values: typing.Iterable[str]):
         if type not in self._data_source:
-            self._data_source[type] = {value}
+            self._data_source[type] = {*values}
             return
 
-        self._data_source[type].add(value)
+        self._data_source[type].update({*values})
 
-    def remove(self, type: DataSource.DataType, value: str):
+    def remove(self, type: DataSource.DataType, *values: typing.Iterable[str]):
         if type not in self._data_source:
             return
 
-        self._data_source[type].remove(value)
+        self._data_source[type].difference_update({*values})
 
 
 class LocalFileDataSource(DataSource):
@@ -103,10 +104,10 @@ class RedisDataSource(DataSource):
 
         return np.array(list(self._redis.smembers(redis_key)))
 
-    def add(self, type: DataSource.DataType, value: str):
+    def add(self, type: DataSource.DataType, *values: typing.Iterable[str]):
         redis_key = self._data_type_to_redis_key(type)
-        self._redis.sadd(redis_key, value)
+        self._redis.sadd(redis_key, *values)
 
-    def remove(self, type: DataSource.DataType, value: str):
+    def remove(self, type: DataSource.DataType, *values: typing.Iterable[str]):
         redis_key = self._data_type_to_redis_key(type)
-        self._redis.srem(redis_key, value)
+        self._redis.srem(redis_key, *values)
