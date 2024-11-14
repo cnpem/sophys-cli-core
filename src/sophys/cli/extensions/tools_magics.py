@@ -285,8 +285,13 @@ class HTTPMagics(Magics):
         with monitor_console(manager.console_monitor):
             env_exists = manager.status()["worker_environment_exists"]
             if env_exists:
-                print("Closing environment...")
-                res = manager.environment_close()
+                if "force" in line:
+                    print("Destroying environment...")
+                    res = manager.environment_destroy()
+                else:
+                    print("Closing environment...")
+                    res = manager.environment_close()
+
                 if not res["success"]:
                     self._logger.warning("Failed to request environment closure: %s", res["msg"])
                     return
