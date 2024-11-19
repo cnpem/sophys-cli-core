@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
-from . import in_debug_mode, render_custom_magics, NamespaceKeys, get_from_namespace
+from . import in_debug_mode, render_custom_magics, NamespaceKeys, get_from_namespace, get_color
 from ..http_utils import monitor_console
 
 
@@ -51,7 +51,7 @@ class KBLMagics(Magics):
     @staticmethod
     def description():
         tools = []
-        tools.append(("kbl", "Open kafka-bluesky-live", "\x1b[38;5;82m"))
+        tools.append(("kbl", "Open kafka-bluesky-live", get_color("\x1b[38;5;82m")))
         return tools
 
 
@@ -99,9 +99,9 @@ class MiscMagics(Magics):
         tools = []
         tools.append(("cs", "Print this help page, with all custom functionality summarized."))
         tools.append(("", ""))
-        tools.append(("show_md", "Print all non-default configured metadata.", "\x1b[38;5;218m"))
-        tools.append(("add_md", "Add a new metadata to the internal state, which will be applied to all next runs.", "\x1b[38;5;218m"))
-        tools.append(("remove_md", "Remove a custom metadata entry, reverting for its normal state.", "\x1b[38;5;218m"))
+        tools.append(("show_md", "Print all non-default configured metadata.", get_color("\x1b[38;5;218m")))
+        tools.append(("add_md", "Add a new metadata to the internal state, which will be applied to all next runs.", get_color("\x1b[38;5;218m")))
+        tools.append(("remove_md", "Remove a custom metadata entry, reverting for its normal state.", get_color("\x1b[38;5;218m")))
         return tools
 
 
@@ -313,11 +313,11 @@ class HTTPMagics(Magics):
             item_type = item["item_type"]
 
             if item_type == "plan":
-                title_color = "\x1b[48;5;16m\x1b[38;5;85m"
+                title_color = get_color("\x1b[48;5;16m\x1b[38;5;85m")
                 if len(item["result"]["msg"]) != 0:
-                    title_color = "\x1b[48;5;0m\x1b[38;5;204m"
+                    title_color = get_color("\x1b[48;5;0m\x1b[38;5;204m")
 
-                render = [title_color + f"=-- Entry #{index}: Plan --=" + "\033[0m"]
+                render = [title_color + f"=-- Entry #{index}: Plan --=" + get_color("\033[0m")]
                 render.append(f" Plan name: {item["name"]}")
                 render.append( " Arguments")  # noqa: E201
 
@@ -383,15 +383,15 @@ class HTTPMagics(Magics):
     @staticmethod
     def description():
         tools = []
-        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state. Use with 'soft' argument for no stopping controls.", "\x1b[38;5;204m"))
-        tools.append(("pause", "Request a pause for the currently executing plan.", "\x1b[38;5;204m"))
-        tools.append(("resume", "Request the currently paused plan to resume execution.", "\x1b[38;5;204m"))
-        tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution.", "\x1b[38;5;204m"))
+        tools.append(("wait_for_idle", "Wait execution until the RunEngine returns to the Idle state. Use with 'soft' argument for no stopping controls.", get_color("\x1b[38;5;204m")))
+        tools.append(("pause", "Request a pause for the currently executing plan.", get_color("\x1b[38;5;204m")))
+        tools.append(("resume", "Request the currently paused plan to resume execution.", get_color("\x1b[38;5;204m")))
+        tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution.", get_color("\x1b[38;5;204m")))
         tools.append(("", ""))
-        tools.append(("query_state", "Query the current server state.", "\x1b[38;5;69m"))
-        tools.append(("query_history", "Query the current item history, with their statuses.", "\x1b[38;5;69m"))
+        tools.append(("query_state", "Query the current server state.", get_color("\x1b[38;5;69m")))
+        tools.append(("query_history", "Query the current item history, with their statuses.", get_color("\x1b[38;5;69m")))
         tools.append(("", ""))
-        tools.append(("reload_devices", "Reload the available devices list (D).", "\x1b[38;5;222m"))
-        tools.append(("reload_plans", "Reload the available plans list (P).", "\x1b[38;5;222m"))
-        tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed.", "\x1b[38;5;222m"))
+        tools.append(("reload_devices", "Reload the available devices list (D).", get_color("\x1b[38;5;222m")))
+        tools.append(("reload_plans", "Reload the available plans list (P).", get_color("\x1b[38;5;222m")))
+        tools.append(("reload_environment", "Reload currently active environment. Open a new one if the current env is closed.", get_color("\x1b[38;5;222m")))
         return tools

@@ -4,6 +4,7 @@ from pathlib import Path
 from traitlets.config import Config
 
 from . import BANNER_NAME_EXTEND
+from .magics import NamespaceKeys
 
 
 variables_desc = {
@@ -46,6 +47,7 @@ def entrypoint():
     parser.add_argument("beamline", help="The beamline to load the configuration from.")
     parser.add_argument("--debug", help="Configure debug mode, with more verbose logging and error messgaes.", action="store_true")
     parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer.", action="store_true")
+    parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_false")
     args = parser.parse_args()
 
     beamline = args.beamline
@@ -95,5 +97,11 @@ def entrypoint():
     ipy_config.TerminalInteractiveShell.confirm_exit = False
 
     import IPython
-    IPython.start_ipython(argv=[], config=ipy_config, user_ns={"BEAMLINE": beamline, "DEBUG": args.debug, "LOCAL_MODE": args.local})
+    init_ns = {
+        "BEAMLINE": beamline,
+        "DEBUG": args.debug,
+        "LOCAL_MODE": args.local,
+        NamespaceKeys.COLORIZED_OUTPUT: args.nocolor,
+    }
+    IPython.start_ipython(argv=[], config=ipy_config, user_ns=init_ns)
 

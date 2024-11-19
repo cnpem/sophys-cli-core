@@ -10,6 +10,7 @@ from ..http_utils import RemoteSessionHandler
 class NamespaceKeys(enum.StrEnum):
     BEST_EFFORT_CALLBACK = "BEC"
     BLACKLISTED_DESCRIPTIONS = "__blacklisted_magic_descriptions"
+    COLORIZED_OUTPUT = "_COLORIZED"
     DATABROKER = "DB"
     DEBUG_MODE = "DEBUG"
     DEVICES = "D"
@@ -47,6 +48,12 @@ def in_debug_mode(local_ns):
     return get_from_namespace(NamespaceKeys.DEBUG_MODE, ns=local_ns)
 
 
+def get_color(color: str) -> str:
+    if get_from_namespace(NamespaceKeys.COLORIZED_OUTPUT, default=True):
+        return color
+    return ""
+
+
 @functools.lru_cache(maxsize=1)
 def render_custom_magics(ipython):
     """Render custom magic descriptions."""
@@ -73,7 +80,7 @@ def render_custom_magics(ipython):
                     render.append(f"{name:<{BANNER_NAME_EXTEND}}: {desc}")
                 elif len(desc_item) == 3:
                     color = desc_item[2]
-                    render.append(f"{color}{name:<{BANNER_NAME_EXTEND}}: {desc}\033[0m")
+                    render.append(f"{color}{name:<{BANNER_NAME_EXTEND}}: {desc}{get_color('\033[0m')}")
 
     # Add extra spacing between commands of different colors
     from itertools import pairwise
