@@ -42,10 +42,10 @@ all = [
 ]
 
 [project.scripts]
-sophys-cli = "sophys.cli.__main__:entrypoint"
+sophys-cli = "sophys.cli.core.__main__:entrypoint"
 
 [tool.setuptools_scm]
-version_file = "src/sophys/cli/__version__.py"
+version_file = "src/sophys/cli/core/__version__.py"
 
 [tool.setuptools.packages.find]
 where = ["src"]
