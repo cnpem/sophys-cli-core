@@ -313,7 +313,11 @@ class HTTPMagics(Magics):
             item_type = item["item_type"]
 
             if item_type == "plan":
-                render = [f"=-- Entry #{index}: Plan --="]
+                title_color = "\x1b[48;5;16m\x1b[38;5;85m"
+                if len(item["result"]["msg"]) != 0:
+                    title_color = "\x1b[48;5;0m\x1b[38;5;204m"
+
+                render = [title_color + f"=-- Entry #{index}: Plan --=" + "\033[0m"]
                 render.append(f" Plan name: {item["name"]}")
                 render.append( " Arguments")  # noqa: E201
 
