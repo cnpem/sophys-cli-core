@@ -15,7 +15,7 @@ import databroker
 
 from sophys.common.utils.kafka.monitor import ThreadedMonitor
 
-from sophys.cli.extensions import NamespaceKeys, add_to_namespace
+from sophys.cli.core.magics import NamespaceKeys, add_to_namespace
 
 sophys_utils = importlib.import_module(f"sophys.{BEAMLINE}.utils")
 default_topic_names = sophys_utils.default_topic_names

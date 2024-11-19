@@ -57,15 +57,15 @@ Inside that entrypoint, you can do whatever you want, but generally you'll want 
 
 One of the main features of this package in the option of transparently communicating with httpserver instead of using a local RunEngine. To do so, we can use the `RemoteSessionHandler` class from the [`http_utils`](./src/sophys/cli/http_utils.py) module, with automatically handles authentication and session management for us.
 
-Using it should be as simple as importing `setup_remote_session_handler` from the [`sophys.cli.extensions`](./src/sophys/cli/extensions/__init__.py) module, and calling it on your extension entrypoint with the ipython object and httpserver address as arguments.
+Using it should be as simple as importing `setup_remote_session_handler` from the [`sophys.cli.core.magics`](./src/sophys/cli/core/magics/__init__.py) module, and calling it on your extension entrypoint with the ipython object and httpserver address as arguments.
 
-Besides the session management bits, we also have many pre-assembled magics for interacting with the remote server. These are located in the [`sophys.cli.extensions.tools_magics`](./src/sophys/cli/extensions/tools_magics.py) module, under the `HTTPMagics` class.
+Besides the session management bits, we also have many pre-assembled magics for interacting with the remote server. These are located in the [`sophys.cli.extensions.tools_magics`](./src/sophys/cli/core/magics/tools_magics.py) module, under the `HTTPMagics` class.
 
 To use that, we must register the class magics, like one would normally do in IPython (`ipython.register_magics(HTTPMagics)`), and we **can** also configure a class property, pertaining to the `reload_plans` specifically, which can use a plan whitelist object to filter out plans available on the server, based on the extension configuration, like so:
 
 ```python
-from sophys.cli.extensions.plan_magics import PlanInformation, PlanWhitelist
-from sophys.cli.extensions.plan_magics import PlanMV, PlanReadMany, PlanCount
+from sophys.cli.core.magics.plan_magics import PlanInformation, PlanWhitelist
+from sophys.cli.core.magics.plan_magics import PlanMV, PlanReadMany, PlanCount
 
 whitelisted_plan_list = [
     PlanInformation("mov", "mov", PlanMV, has_detectors=False),
