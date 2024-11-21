@@ -118,3 +118,52 @@ def setup_plan_magics(ipython, sophys_name: str, plan_whitelist: dict, mode_of_o
     for plan_information, plan in get_plans(sophys_name, plan_whitelist):
         register_magic_for_plan(plan, plan_information, mode_of_operation, post_submission_callbacks)
     ipython.register_magics(RealMagics)
+
+
+def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int | None = 10):
+    """
+    Context manager for intercepting and handling SIGINTs in a clean way.
+
+    Parameters
+    ----------
+    callbacks : dict, optional
+        Callbacks in the form (Ctrl+C count) -> (Callable) for making stuff when getting SIGINTs.
+    max_signal_count : int, optional
+        Maximum number of SIGINTs to handle before returning to the original handler. Defaults to 10.
+    """
+
+    if callbacks is None:
+        callbacks = dict()
+
+    import signal
+
+    _original_handler = signal.getsignal(signal.SIGINT)
+    _released = False
+    _count = 0
+
+    def _release():
+        nonlocal _released
+        if _released:
+            return
+
+        signal.signal(signal.SIGINT, _original_handler)
+        _released = True
+
+    def _handler(signum, frame):
+        nonlocal _count
+        _count += 1
+
+        if _count > max_signal_count and not _released:
+            _release()
+            _original_handler(signum, frame)
+            return
+
+        if _count in callbacks:
+            callbacks[_count]()
+
+    signal.signal(signal.SIGINT, _handler)
+
+    try:
+        yield
+    finally:
+        _release()
