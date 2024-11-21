@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
-from . import in_debug_mode, render_custom_magics, NamespaceKeys, get_from_namespace, get_color
+from . import in_debug_mode, render_custom_magics, NamespaceKeys, get_from_namespace, get_color, handle_ctrl_c_signals
 from ..http_utils import monitor_console
 
 
@@ -139,12 +139,13 @@ class HTTPMagics(Magics):
 
         print("")
 
-        try:
-            manager.wait_for_idle()
-        except KeyboardInterrupt:
+        def first_time_callback():
             if line != "soft":
                 print("")
                 self.stop(line, None)
+
+        with handle_ctrl_c_signals({1: first_time_callback}):
+            manager.wait_for_idle()
 
     @line_magic
     @needs_local_scope
