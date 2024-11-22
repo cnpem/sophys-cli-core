@@ -1,6 +1,8 @@
 import enum
 import functools
 
+from contextlib import contextmanager
+
 from IPython import get_ipython
 
 from .. import BANNER_NAME_EXTEND
@@ -120,6 +122,7 @@ def setup_plan_magics(ipython, sophys_name: str, plan_whitelist: dict, mode_of_o
     ipython.register_magics(RealMagics)
 
 
+@contextmanager
 def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int | None = 10):
     """
     Context manager for intercepting and handling SIGINTs in a clean way.
