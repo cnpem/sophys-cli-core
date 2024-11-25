@@ -15,7 +15,7 @@ import databroker
 
 from sophys.common.utils.kafka.monitor import ThreadedMonitor
 
-from sophys.cli.core.magics import NamespaceKeys, add_to_namespace
+from sophys.cli.core.magics import NamespaceKeys, add_to_namespace, get_from_namespace
 
 sophys_utils = importlib.import_module(f"sophys.{BEAMLINE}.utils")
 default_topic_names = sophys_utils.default_topic_names
@@ -53,7 +53,7 @@ def execute_at_start():
 
     add_to_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, BEC, _globals=globals())
 
-    if LOCAL_MODE:
+    if get_from_namespace(NamespaceKeys.LOCAL_MODE, False):
         class RunEngineWithoutTracebackOnPause(RunEngine):
             def interruption_wrapper(func):
                 @functools.wraps(func)

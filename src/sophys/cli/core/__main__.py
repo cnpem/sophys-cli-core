@@ -99,8 +99,8 @@ def entrypoint():
     import IPython
     init_ns = {
         "BEAMLINE": beamline,
-        "DEBUG": args.debug,
-        "LOCAL_MODE": args.local,
+        NamespaceKeys.DEBUG_MODE: args.debug,
+        NamespaceKeys.LOCAL_MODE: args.local,
         NamespaceKeys.COLORIZED_OUTPUT: args.nocolor,
     }
     IPython.start_ipython(argv=[], config=ipy_config, user_ns=init_ns)
