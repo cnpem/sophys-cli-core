@@ -19,6 +19,7 @@ class NamespaceKeys(enum.StrEnum):
     KAFKA_MONITOR = "KAFKA_MON"
     LAST_DATA = "LAST"
     LOCAL_DATA_SOURCE = "__local_data_source"
+    LOCAL_MODE = "LOCAL_MODE"
     PERSISTENT_METADATA = "__persistent_metadata"
     PLANS = "P"
     REMOTE_SESSION_HANDLER = "_remote_session_handler"
