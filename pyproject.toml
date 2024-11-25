@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sophys-cli"
+name = "sophys-cli-core"
 authors = [
   { name="Sofia Ferreira", email="sofia.ferreira@lnls.br" },
 ]
@@ -33,7 +33,7 @@ dev = [
   "pytest",
 ]
 all = [
-  "sophys-cli[dev]"
+  "sophys-cli-core[dev]"
 ]
 
 [project.scripts]
