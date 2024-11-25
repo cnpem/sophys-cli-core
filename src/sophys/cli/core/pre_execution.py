@@ -17,7 +17,7 @@ from sophys.common.utils.kafka.monitor import ThreadedMonitor
 
 from sophys.cli.core.magics import NamespaceKeys, add_to_namespace, get_from_namespace
 
-sophys_utils = importlib.import_module(f"sophys.{BEAMLINE}.utils")
+sophys_utils = importlib.import_module(f"sophys.{EXTENSION}.utils")
 default_topic_names = sophys_utils.default_topic_names
 default_bootstrap_servers = sophys_utils.default_bootstrap_servers
 
@@ -76,7 +76,7 @@ def execute_at_start():
 
         RE = RunEngineWithoutTracebackOnPause({})
 
-        sophys_devices = importlib.import_module(f"sophys.{BEAMLINE}.devices")
+        sophys_devices = importlib.import_module(f"sophys.{EXTENSION}.devices")
         instantiate_devices = sophys_devices.instantiate_devices
 
         make_kafka_callback = sophys_utils.make_kafka_callback

@@ -1,6 +1,8 @@
-# sophys-cli
+# sophys-cli-core
 
 A command-line client for the sophys project group.
+
+This is the core project of the client, providing basic and common functionality for all extensions.
 
 ## Installation
 
@@ -9,15 +11,15 @@ To use it, you'll have to be in a valid Python environment (consider using [micr
 Normal installation (TODO: Create pre-built packages):
 
 ```bash
-$ pip install git+https://gitlab.cnpem.br/SOL/bluesky/sophys-cli.git
+$ pip install git+https://github.com/cnpem/sophys-cli-core.git
 ```
 
 Developer installation:
 
 ```bash
 $ cd <path where you will clone the sophys-cli package>
-$ git clone https://gitlab.cnpem.br/SOL/bluesky/sophys-cli.git
-$ pip install -e sophys-cli
+$ git clone https://github.com/cnpem/sophys-cli-core.git
+$ pip install -e sophys-cli-core
 ```
 
 With that, you'll have access to the `sophys-cli` command in the environment you installed it. Furthermore, to use `sophys-cli` with a particular beamline configuration, you must also install the `sophys-<beamline>` package in that environment. After that, to use that configuration, see the [Usage](#usage) section.
@@ -34,13 +36,17 @@ The allowed arguments are printed with the `-h/--help` flags, like so:
 
 ```bash
 $ sophys-cli -h
-usage: sophys-cli [-h] beamline
+usage: sophys-cli [-h] [--debug] [--local] [--test] [--nocolor] extension
 
 positional arguments:
-  beamline    The beamline to load the configuration from.
+  extension    The extension to load the configuration from.
 
 options:
   -h, --help  show this help message and exit
+  --debug     Configure debug mode, with more verbose logging and error messgaes.
+  --local     Use a local RunEngine instead of communicating with HTTPServer.
+  --test      Setup testing configurations to test the tool without interfering with production configured parameters.
+  --nocolor   Remove color codes from rich output.
 ```
 
 ## Development

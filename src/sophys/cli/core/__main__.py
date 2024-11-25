@@ -8,7 +8,6 @@ from .magics import NamespaceKeys
 
 
 variables_desc = {
-    "BEAMLINE": "The currently configured beamline.",
     "D": "The list of available devices (to the current user).",
     "P": "The list of available plans (to the current user).",
     "RE": "The Bluesky run engine.",
@@ -19,7 +18,7 @@ variables_desc = {
 
 
 def create_banner_text(args):
-    banner_variables = ["BEAMLINE", "D", "P", "DB", "LAST", "BEC"]
+    banner_variables = ["D", "P", "DB", "LAST", "BEC"]
     if args.local:
         banner_variables.append("RE")
     banner_variables.sort()
@@ -44,14 +43,14 @@ def create_banner_text(args):
 
 def entrypoint():
     parser = ArgumentParser()
-    parser.add_argument("beamline", help="The beamline to load the configuration from.")
+    parser.add_argument("extension", help="The extension to load the configuration from.")
     parser.add_argument("--debug", help="Configure debug mode, with more verbose logging and error messgaes.", action="store_true")
     parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer.", action="store_true")
     parser.add_argument("--test", help="Setup testing configurations to test the tool without interfering with production configured parameters.", action="store_true")
     parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_false")
     args = parser.parse_args()
 
-    beamline = args.beamline
+    extension = args.extension
 
     # Documentation: https://ipython.readthedocs.io/en/stable/config/options/kernel.html
     ipy_config = Config()
@@ -93,13 +92,13 @@ def entrypoint():
 
     ipy_config.InteractiveShell.banner2 = create_banner_text(args)
 
-    ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{beamline}"]
+    ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{extension}"]
 
     ipy_config.TerminalInteractiveShell.confirm_exit = False
 
     import IPython
     init_ns = {
-        "BEAMLINE": beamline,
+        "EXTENSION": extension,
         NamespaceKeys.DEBUG_MODE: args.debug,
         NamespaceKeys.LOCAL_MODE: args.local,
         NamespaceKeys.TEST_MODE: args.test,
