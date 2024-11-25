@@ -32,13 +32,8 @@ dependencies = [
 dev = [
   "pytest",
 ]
-ema = [
-  "redis",
-  "qtpy",
-  "sophys-ema"
-]
 all = [
-  "sophys-cli[dev,ema]"
+  "sophys-cli[dev]"
 ]
 
 [project.scripts]
