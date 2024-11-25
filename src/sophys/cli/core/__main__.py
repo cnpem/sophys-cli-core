@@ -47,6 +47,7 @@ def entrypoint():
     parser.add_argument("beamline", help="The beamline to load the configuration from.")
     parser.add_argument("--debug", help="Configure debug mode, with more verbose logging and error messgaes.", action="store_true")
     parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer.", action="store_true")
+    parser.add_argument("--test", help="Setup testing configurations to test the tool without interfering with production configured parameters.", action="store_true")
     parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_false")
     args = parser.parse_args()
 
@@ -101,6 +102,7 @@ def entrypoint():
         "BEAMLINE": beamline,
         NamespaceKeys.DEBUG_MODE: args.debug,
         NamespaceKeys.LOCAL_MODE: args.local,
+        NamespaceKeys.TEST_MODE: args.test,
         NamespaceKeys.COLORIZED_OUTPUT: args.nocolor,
     }
     IPython.start_ipython(argv=[], config=ipy_config, user_ns=init_ns)

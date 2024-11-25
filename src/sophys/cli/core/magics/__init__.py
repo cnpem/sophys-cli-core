@@ -25,6 +25,7 @@ class NamespaceKeys(enum.StrEnum):
     REMOTE_SESSION_HANDLER = "_remote_session_handler"
     REMOTE_DATA_SOURCE = "__data_source"
     RUN_ENGINE = "RE"
+    TEST_MODE = "TEST_MODE"
 
 
 def add_to_namespace(key: NamespaceKeys, value, ipython=None, _globals=None):
