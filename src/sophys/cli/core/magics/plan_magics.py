@@ -465,8 +465,13 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
                 else:
                     finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
 
-                for sub in post_submission_callbacks:
-                    sub()
+                post_submission_success = True
+                for sub_cb in post_submission_callbacks:
+                    ret = sub_cb()
+                    post_submission_success &= (ret or (ret is None))
+
+                if not post_submission_success:
+                    finish_msg = "Plan has been submitted, but failed at a later point."
 
                 return finish_msg
         except Exception as e:
