@@ -404,6 +404,42 @@ class PlanInformation(BaseModel):
             plan_obj.pre_processing_md = self.extra_props["pre_processing_md"]
 
 
+def _local_mode_plan_execute(RE, plan, post_submission_callbacks):
+    """Execute a plan in a local RunEngine context."""
+    ret = RE(plan)
+    finish_msg = "Plan has finished successfully!"
+
+    if ret is None:
+        finish_msg = "Plan has paused!"
+    elif len(ret) > 0:
+        finish_msg += f" | Run UID: {ret[0]}"
+
+    for sub in post_submission_callbacks:
+        sub()
+
+    return finish_msg
+
+
+def _remote_mode_plan_execute(manager, plan, post_submission_callbacks):
+    """Execute a plan in a remote queueserver context."""
+    response = manager.item_execute(plan)
+
+    if response["success"]:
+        finish_msg = "Plan has been submitted successfully!"
+    else:
+        finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
+
+    post_submission_success = True
+    for sub_cb in post_submission_callbacks:
+        ret = sub_cb()
+        post_submission_success &= (ret or (ret is None))
+
+    if not post_submission_success:
+        finish_msg = "Plan has been submitted, but failed at a later point."
+
+    return finish_msg
+
+
 def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation: ModeOfOperation, post_submission_callbacks: list[callable]):
     """
     Register a plan as a magic with bash-like syntax.
@@ -440,40 +476,14 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
                 return
 
             if mode_of_operation == ModeOfOperation.Local:
-                ret = local_ns["RE"](plan())
-                finish_msg = "Plan has finished successfully!"
-
-                if ret is None:
-                    finish_msg = "Plan has paused!"
-                elif len(ret) > 0:
-                    finish_msg += f" | Run UID: {ret[0]}"
-
-                for sub in post_submission_callbacks:
-                    sub()
-
-                return finish_msg
+                return _local_mode_plan_execute(local_ns["RE"], plan(), post_submission_callbacks)
             if mode_of_operation == ModeOfOperation.Remote:
                 handler = local_ns.get("_remote_session_handler", None)
                 if handler is None:
                     raise NoRemoteControlException
 
                 manager = handler.get_authorized_manager()
-                response = manager.item_execute(plan)
-
-                if response["success"]:
-                    finish_msg = "Plan has been submitted successfully!"
-                else:
-                    finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
-
-                post_submission_success = True
-                for sub_cb in post_submission_callbacks:
-                    ret = sub_cb()
-                    post_submission_success &= (ret or (ret is None))
-
-                if not post_submission_success:
-                    finish_msg = "Plan has been submitted, but failed at a later point."
-
-                return finish_msg
+                return _remote_mode_plan_execute(manager, plan, post_submission_callbacks)
         except Exception as e:
             print()
             print("Failed to run the provided plan.")
