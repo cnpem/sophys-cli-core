@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import typing
 
 from abc import ABC, abstractmethod
 
@@ -122,6 +123,19 @@ class HTTPMagics(Magics):
 
         return remote_session_handler.get_authorized_manager()
 
+    def get_history(self, manager) -> typing.Sequence[tuple[int, dict]] | None:
+        """Retrieve the plan execution history, from most recent to oldest entries."""
+        res = manager.history_get()
+        if not res["success"]:
+            self._logger.warning("Failed to query the history: %s", res["msg"])
+            return
+
+        if len(res["items"]) == 0:
+            print("History is currently empty.")
+            return
+
+        return enumerate(reversed(res["items"]))
+
     @line_magic
     def wait_for_idle(self, line):
         manager = self.get_manager()
@@ -139,13 +153,34 @@ class HTTPMagics(Magics):
 
         print("")
 
+        tried_to_stop = False
+
         def first_time_callback():
+            nonlocal tried_to_stop
+            tried_to_stop = True
+
             if line != "soft":
                 print("")
                 self.stop(line, None)
 
         with handle_ctrl_c_signals({1: first_time_callback}):
             manager.wait_for_idle()
+
+        if not tried_to_stop:
+            history_items = self.get_history(manager)
+            if history_items is None:
+                print("The execution history is empty??? Something has gone terribly wrong!")
+                return
+
+            last_item = next(history_items)[1]["result"]
+
+            if last_item["exit_status"] != "success":
+                print("The plan has failed!")
+
+                if len(msg := last_item["msg"]) != 0:
+                    print(f"Exit message: {msg}")
+
+                return False
 
     @line_magic
     @needs_local_scope
@@ -366,19 +401,11 @@ class HTTPMagics(Magics):
         if manager is None:
             return
 
-        res = manager.history_get()
-        if not res["success"]:
-            self._logger.warning("Failed to query the history: %s", res["msg"])
-            return
-
-        if len(res["items"]) == 0:
-            print("History is currently empty.")
-            return
+        history_items = self.get_history(manager)
 
         from IPython.core import page
         render = "queueserver history - More recent entries are at the top.\n\n\n"
-        it = enumerate(reversed(res["items"]))
-        render += "\n\n\n".join(pretty_render_history_item(item, i) for i, item in it)
+        render += "\n\n\n".join(pretty_render_history_item(item, i) for i, item in history_items)
         page.page(render)
 
     @staticmethod
