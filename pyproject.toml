@@ -25,7 +25,8 @@ dependencies = [
   "kafka-bluesky-live",
   "databroker<2.0.0",
   "bluesky-queueserver-api",
-  "pydantic"
+  "pydantic",
+  "pickleshare",
 ]
 
 [project.optional-dependencies]
