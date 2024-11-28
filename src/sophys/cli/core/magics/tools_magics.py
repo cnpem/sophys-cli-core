@@ -174,7 +174,7 @@ class HTTPMagics(Magics):
 
             last_item = next(history_items)[1]["result"]
 
-            if last_item["exit_status"] != "success":
+            if last_item["exit_status"] != "completed":
                 print("The plan has failed!")
 
                 if len(msg := last_item["msg"]) != 0:
