@@ -310,6 +310,10 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def query_state(self, line, local_ns):
+        manager = self.get_manager(local_ns)
+        if manager is None:
+            return
+
         def pretty_print_state(state):
             print()
             print(f"Version: {state['msg']}")
@@ -323,9 +327,34 @@ class HTTPMagics(Magics):
             print(f"  Loop: {state['plan_queue_mode']['loop']}")
             print()
 
-        manager = self.get_manager(local_ns)
-        if manager is None:
-            return
+            if state["running_item_uid"] is not None:
+                print("Running plan information:")
+
+                res = manager.queue_get()
+                if not res["success"]:
+                    print(f"  Could not retrieve information about the running plan: {res['msg']}")
+                    return
+
+                running_item = res["running_item"]
+                print(f"  Plan name: {running_item['name']}")
+                print( "  Arguments:")  # noqa: E201
+
+                args = ", ".join(str(i) for i in running_item["args"])
+                print(f"   args: {args}")
+
+                if "kwargs" in running_item:
+                    kwargs = ", ".join("'{}' = {}".format(*i) for i in running_item["kwargs"].items())
+                    print(f"   kwargs: {kwargs}")
+
+                from time import strftime, localtime
+                print( "  Run metadata:")  # noqa: E201
+                print(f"    User: {running_item['user']}")
+                print(f"    User group: {running_item['user_group']}")
+                time_format = "%H:%M:%S (%d/%m/%Y)"
+                start_time = strftime(time_format, localtime(running_item["properties"]["time_start"]))
+                print(f"    Start time: {start_time}")
+
+                print()
 
         try:
             res = manager.status()
