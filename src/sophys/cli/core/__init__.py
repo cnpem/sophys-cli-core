@@ -1,3 +1,5 @@
+import logging
+
 from types import SimpleNamespace
 
 BANNER_NAME_EXTEND = 20  # This many space between the name and the ':'.
@@ -23,7 +25,13 @@ CLI_KAFKA_PORT_ADDRESS_DEF = "9092"
 
 def get_cli_envvar(envvar_name: str) -> str:
     import os
-    return os.environ.get(envvar_name, globals().get(envvar_name + "_DEF", "NO_DEFAULT"))
+
+    var = os.environ.get(envvar_name, None)
+    if var is not None:
+        return var
+
+    logging.warning(f"The environment variable '{envvar_name}' is not set. Using a default value.")
+    return globals().get(envvar_name + "_DEF", "NO_DEFAULT")
 
 
 ENVVARS = SimpleNamespace()
