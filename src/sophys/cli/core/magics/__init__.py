@@ -109,8 +109,11 @@ def setup_remote_session_handler(ipython, address: str):
 
     add_to_namespace(NamespaceKeys.REMOTE_SESSION_HANDLER, _remote_session_handler, ipython)
 
-    ipython.run_line_magic("reload_devices", "")
-    ipython.run_line_magic("reload_plans", "")
+    try:
+        ipython.run_line_magic("reload_devices", "")
+        ipython.run_line_magic("reload_plans", "")
+    except Exception:
+        print(f"Could not connect to httpserver at address '{address}'.")
 
 
 def setup_plan_magics(ipython, sophys_name: str, plan_whitelist: dict, mode_of_operation, post_submission_callbacks: list[callable] | None = None):

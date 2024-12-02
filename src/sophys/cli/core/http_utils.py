@@ -9,7 +9,7 @@ import typing
 from contextlib import contextmanager
 from collections.abc import Callable
 
-from bluesky_queueserver_api.comm_base import HTTPClientError, RequestParameterError, RequestTimeoutError
+from bluesky_queueserver_api.comm_base import HTTPClientError, HTTPRequestError, RequestParameterError, RequestTimeoutError
 from bluesky_queueserver_api.http import REManagerAPI as RM_HTTP_Sync
 from bluesky_queueserver_api.console_monitor import _ConsoleMonitor
 
@@ -130,7 +130,10 @@ class RemoteSessionHandler(threading.Thread):
 
     def close(self):
         self._logger.debug("Logging out and closing the manager...")
-        self._manager.logout()
+        try:
+            self._manager.logout()
+        except HTTPRequestError:
+            pass
         self._manager.close()
         self._running = False
 

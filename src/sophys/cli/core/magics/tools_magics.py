@@ -307,9 +307,12 @@ class HTTPMagics(Magics):
         if manager is None:
             return
 
-        res = manager.status()
-
-        pretty_print_state(res)
+        try:
+            res = manager.status()
+        except Exception:
+            pass
+        else:
+            pretty_print_state(res)
 
     @line_magic
     @needs_local_scope
