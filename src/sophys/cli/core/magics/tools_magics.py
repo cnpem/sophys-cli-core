@@ -109,6 +109,26 @@ class MiscMagics(Magics):
 @magics_class
 class HTTPMagics(Magics):
     def __init__(self, *args, **kwargs):
+        """
+        IPython magics for httpserver interaction.
+
+        Attributes
+        ----------
+        additional_state : list of callables, optional
+            A list of additional logic to render when calling the 'query_state' magic.
+            The callbacks receive no arguments, and must return a string with the state rendered in it.
+
+            For example:
+                def my_custom_state() -> str:
+                    render = "My state:" + "\n"
+                    render += "  State: Cool" + "\n"
+                    return render
+
+                ipython = get_ipython()
+                ipython.register_magics(HTTPMagics)
+                ipython.magics_manager.registry["HTTPMagics"].additional_state = [my_custom_state]
+                ...
+        """
         super().__init__(*args, **kwargs)
 
         self._logger = logging.getLogger("sophys_cli.tools")
@@ -313,6 +333,11 @@ class HTTPMagics(Magics):
             pass
         else:
             pretty_print_state(res)
+
+        if hasattr(self, "additional_state"):
+            for cb in self.additional_state:
+                print(cb())
+                print()
 
     @line_magic
     @needs_local_scope
