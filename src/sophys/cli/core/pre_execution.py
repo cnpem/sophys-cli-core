@@ -53,6 +53,12 @@ def execute_at_start():
 
     add_to_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, BEC, _globals=globals())
 
+    kafka_topic = default_topic_names()[0]
+    if get_from_namespace(NamespaceKeys.TEST_MODE, False):
+        kafka_topic = kafka_topic.replace(EXTENSION, "test")
+
+    add_to_namespace(NamespaceKeys.KAFKA_TOPIC, kafka_topic, _globals=globals())
+
     if get_from_namespace(NamespaceKeys.LOCAL_MODE, False):
         class RunEngineWithoutTracebackOnPause(RunEngine):
             def interruption_wrapper(func):
@@ -84,7 +90,7 @@ def execute_at_start():
         # Kafka callback
         # NOTE: This is needed even in the local setting so that `kbl` works even in this case.
 
-        kafka_logger.info(f"Connecting to kafka... (IPs: {default_bootstrap_servers()} | Topics: {default_topic_names()})")
+        kafka_logger.info(f"Connecting to kafka... (IPs: {default_bootstrap_servers()} | Topic: {kafka_topic})")
         try:
             RE.subscribe(make_kafka_callback(backoff_times=[0.1, 1.0]))
         except (TypeError, NoBrokersAvailable):
@@ -97,7 +103,7 @@ def execute_at_start():
         else:
             kafka_logger.info("Connected to the kafka broker successfully!")
 
-            monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
+            monitor = create_kafka_monitor(kafka_topic, default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
             add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=globals())
 
         # Leave this last so device instantiation errors do not prevent everything else from working
@@ -114,7 +120,7 @@ def execute_at_start():
         add_to_namespace(NamespaceKeys.DEVICES, D, _globals=globals())
 
     else:
-        monitor = create_kafka_monitor(default_topic_names()[0], default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
+        monitor = create_kafka_monitor(kafka_topic, default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
         add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=globals())
 
 

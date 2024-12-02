@@ -41,7 +41,7 @@ class KBLMagics(Magics):
             command_line = ["kbl", *line.split(" ")]
         else:
             default_bss = local_ns["default_bootstrap_servers"]()
-            default_tn = local_ns["default_topic_names"]()[0]
+            default_tn = get_from_namespace(NamespaceKeys.KAFKA_TOPIC)
             command_line = ["kbl", default_tn, "--bootstrap-servers", " ".join(default_bss)]
 
         kwargs = {"start_new_session": True}
