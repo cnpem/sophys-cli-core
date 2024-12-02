@@ -28,6 +28,11 @@ class ToolMagicBase(ABC):
 
 @magics_class
 class KBLMagics(Magics):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._logger = logging.getLogger("sophys_cli.tools")
+
     @line_magic
     @needs_local_scope
     def kbl(self, line, local_ns):
@@ -47,7 +52,7 @@ class KBLMagics(Magics):
             proc = subprocess.Popen(command_line, **kwargs,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        logging.info(f"Running {command_line} in a new process... (PID={proc.pid})")
+        self._logger.info(f"Running {command_line} in a new process... (PID={proc.pid})")
 
     @staticmethod
     def description():
