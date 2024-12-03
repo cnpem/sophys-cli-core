@@ -117,14 +117,24 @@ def setup_remote_session_handler(ipython, address: str):
         print(f"Could not connect to httpserver at address '{address}'.")
 
 
-def setup_plan_magics(ipython, sophys_name: str, plan_whitelist: dict, mode_of_operation, post_submission_callbacks: list[callable] | None = None):
+def setup_plan_magics(
+        ipython,
+        sophys_name: str,
+        plan_whitelist: dict,
+        mode_of_operation,
+        post_submission_callbacks: list[callable] | None = None,
+        exception_handlers: dict[type(Exception), callable] | None = None,
+        ):
     from .plan_magics import register_magic_for_plan, get_plans, RealMagics
 
     if post_submission_callbacks is None:
         post_submission_callbacks = []
 
+    if exception_handlers is None:
+        exception_handlers = {}
+
     for plan_information, plan in get_plans(sophys_name, plan_whitelist):
-        register_magic_for_plan(plan, plan_information, mode_of_operation, post_submission_callbacks)
+        register_magic_for_plan(plan, plan_information, mode_of_operation, post_submission_callbacks, exception_handlers)
     ipython.register_magics(RealMagics)
 
 

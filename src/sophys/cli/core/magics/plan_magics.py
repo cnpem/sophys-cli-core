@@ -12,7 +12,7 @@ from IPython.core.magic import Magics, magics_class, record_magic, needs_local_s
 
 from sophys.common.utils.registry import find_all as registry_find_all
 
-from . import in_debug_mode
+from . import in_debug_mode, NamespaceKeys, get_from_namespace
 
 try:
     from bluesky_queueserver_api.item import BPlan
@@ -24,6 +24,12 @@ except ImportError:
 class ModeOfOperation(IntEnum):
     Local = 0
     Remote = 1
+
+
+class ExceptionHandlerReturnValue(IntEnum):
+    EXIT_QUIET = 0
+    EXIT_VERBOSE = 1
+    RETRY = 2
 
 
 class NoRemoteControlException(Exception):
@@ -440,7 +446,13 @@ def _remote_mode_plan_execute(manager, plan, post_submission_callbacks):
     return finish_msg
 
 
-def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation: ModeOfOperation, post_submission_callbacks: list[callable]):
+def register_magic_for_plan(
+        plan,
+        plan_info: PlanInformation,
+        mode_of_operation: ModeOfOperation,
+        post_submission_callbacks: list[callable],
+        exception_handlers: dict[type(Exception), callable]
+        ):
     """
     Register a plan as a magic with bash-like syntax.
 
@@ -452,6 +464,12 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
         The PlanInformation object for the given plan.
     mode_of_operation : ModeOfOperation
         Whether to run things locally or via a remote service using httpserver.
+    exception_handlers : map of Exception types to callbacks
+        This mapping provides a way for extensions to customize how they handle certain
+        exception thrown at or right before plan execution.
+
+        The callbacks receive the original exception object, and the local namespace,
+        and return an object of ExceptionHandlerReturnValue indicating how to proceed.
     """
     plan_obj = plan_info.plan_class(plan_info.user_name, plan_info.plan_name, plan, mode_of_operation)
     plan_info.apply_to_plan(plan_obj)
@@ -461,41 +479,53 @@ def register_magic_for_plan(plan, plan_info: PlanInformation, mode_of_operation:
 
     @needs_local_scope
     def __inner(line, local_ns):
-        try:
-            parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
-        except Exception as e:
-            # FIXME: There should be a better way to check this condition.
-            if "-h" not in line:
-                print("Parsing the plan arguments has failed:")
-                print("  " + str(e))
-            return
-
-        try:
-            plan = run_callback(parsed_namespace, local_ns)
-            if plan is None:
+        while True:
+            try:
+                parsed_namespace, _ = _a.parse_known_args(line.strip().split(' '))
+            except Exception as e:
+                # FIXME: There should be a better way to check this condition.
+                if "-h" not in line:
+                    print("Parsing the plan arguments has failed:")
+                    print("  " + str(e))
                 return
 
-            if mode_of_operation == ModeOfOperation.Local:
-                return _local_mode_plan_execute(local_ns["RE"], plan(), post_submission_callbacks)
-            if mode_of_operation == ModeOfOperation.Remote:
-                handler = local_ns.get("_remote_session_handler", None)
-                if handler is None:
-                    raise NoRemoteControlException
+            try:
+                plan = run_callback(parsed_namespace, local_ns)
+                if plan is None:
+                    return
 
-                manager = handler.get_authorized_manager()
-                return _remote_mode_plan_execute(manager, plan, post_submission_callbacks)
-        except Exception as e:
-            print()
-            print("Failed to run the provided plan.")
-            print("Reason:")
-            print()
+                if mode_of_operation == ModeOfOperation.Local:
+                    return _local_mode_plan_execute(local_ns["RE"], plan(), post_submission_callbacks)
+                if mode_of_operation == ModeOfOperation.Remote:
+                    handler = get_from_namespace(NamespaceKeys.REMOTE_SESSION_HANDLER, ns=local_ns)
+                    if handler is None:
+                        raise NoRemoteControlException
 
-            debug_mode = in_debug_mode(local_ns)
-            limit = None if debug_mode else 1
+                    manager = handler.get_authorized_manager()
+                    return _remote_mode_plan_execute(manager, plan, post_submission_callbacks)
+            except Exception as e:
+                if type(e) in exception_handlers:
+                    match exception_handlers[type(e)](e, local_ns):
+                        case ExceptionHandlerReturnValue.EXIT_QUIET:
+                            return
+                        case ExceptionHandlerReturnValue.EXIT_VERBOSE:
+                            pass
+                        case ExceptionHandlerReturnValue.RETRY:
+                            continue
 
-            import traceback
-            tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=limit, chain=False)]
-            print("\n".join(f"*** {i}" for item in tb for i in item))
+                print()
+                print("Failed to run the provided plan.")
+                print("Reason:")
+                print()
+
+                debug_mode = in_debug_mode(local_ns)
+                limit = None if debug_mode else 1
+
+                import traceback
+                tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=limit, chain=False)]
+                print("\n".join(f"*** {i}" for item in tb for i in item))
+
+                return
 
     record_magic(RealMagics.magics, "line", plan_info.user_name, __inner)
 
