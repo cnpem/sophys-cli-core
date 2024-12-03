@@ -161,6 +161,33 @@ class HTTPMagics(Magics):
 
         return enumerate(reversed(res["items"]))
 
+    @classmethod
+    def _reload_environment(cls, manager, force: bool, logger):
+        """Reload the queueserver worker environment."""
+        with monitor_console(manager.console_monitor):
+            env_exists = manager.status()["worker_environment_exists"]
+            if env_exists:
+                if force:
+                    print("Destroying environment...")
+                    res = manager.environment_destroy()
+                else:
+                    print("Closing environment...")
+                    res = manager.environment_close()
+
+                if not res["success"]:
+                    logger.warning("Failed to request environment closure: %s", res["msg"])
+                    return
+
+                manager.wait_for_idle()
+
+            print("Opening environment...")
+            res = manager.environment_open()
+            if not res["success"]:
+                logger.warning("Failed to request environment opening: %s", res["msg"])
+                return
+
+            manager.wait_for_idle()
+
     @line_magic
     def wait_for_idle(self, line):
         manager = self.get_manager()
@@ -380,29 +407,7 @@ class HTTPMagics(Magics):
         if manager is None:
             return
 
-        with monitor_console(manager.console_monitor):
-            env_exists = manager.status()["worker_environment_exists"]
-            if env_exists:
-                if "force" in line:
-                    print("Destroying environment...")
-                    res = manager.environment_destroy()
-                else:
-                    print("Closing environment...")
-                    res = manager.environment_close()
-
-                if not res["success"]:
-                    self._logger.warning("Failed to request environment closure: %s", res["msg"])
-                    return
-
-                manager.wait_for_idle()
-
-            print("Opening environment...")
-            res = manager.environment_open()
-            if not res["success"]:
-                self._logger.warning("Failed to request environment opening: %s", res["msg"])
-                return
-
-            manager.wait_for_idle()
+        self._reload_environment(manager, "force" in line, self._logger)
 
     @line_magic
     @needs_local_scope
