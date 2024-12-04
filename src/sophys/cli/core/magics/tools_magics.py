@@ -215,7 +215,11 @@ class HTTPMagics(Magics):
                 print("")
                 self.stop(line, None)
 
-        with handle_ctrl_c_signals({1: first_time_callback}):
+        def last_time_callback():
+            print()
+            print("Leaving the waiting prompt without waiting for stop command to finish.")
+
+        with handle_ctrl_c_signals({1: first_time_callback, 10: last_time_callback}, ignore_original_handler=True):
             manager.wait_for_idle()
 
         if not tried_to_stop:
