@@ -139,7 +139,7 @@ def setup_plan_magics(
 
 
 @contextmanager
-def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int = 10, ignore_original_handler: bool = False):
+def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int = 9, ignore_original_handler: bool = False):
     """
     Context manager for intercepting and handling SIGINTs in a clean way.
 
