@@ -92,7 +92,7 @@ def execute_at_start():
 
         kafka_logger.info(f"Connecting to kafka... (IPs: {default_bootstrap_servers()} | Topic: {kafka_topic})")
         try:
-            RE.subscribe(make_kafka_callback(backoff_times=[0.1, 1.0]))
+            RE.subscribe(make_kafka_callback(topic_names=[kafka_topic], backoff_times=[0.1, 1.0]))
         except (TypeError, NoBrokersAvailable):
             kafka_logger.info("Failed to connect to the kafka broker.")
 
