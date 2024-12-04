@@ -139,7 +139,7 @@ def setup_plan_magics(
 
 
 @contextmanager
-def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int | None = 10):
+def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int = 10, ignore_original_handler: bool = False):
     """
     Context manager for intercepting and handling SIGINTs in a clean way.
 
@@ -149,6 +149,9 @@ def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int |
         Callbacks in the form (Ctrl+C count) -> (Callable) for making stuff when getting SIGINTs.
     max_signal_count : int, optional
         Maximum number of SIGINTs to handle before returning to the original handler. Defaults to 10.
+    ignore_original_handler : bool, optional
+        Whether to ignore the original handler when reaching `max_signal_count` interrupts,
+        doing nothing in its place. Defaults to False.
     """
 
     if callbacks is None:
@@ -174,7 +177,9 @@ def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int |
 
         if _count > max_signal_count and not _released:
             _release()
+
             _original_handler(signum, frame)
+
             return
 
         if _count in callbacks:
@@ -182,7 +187,15 @@ def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int |
 
     signal.signal(signal.SIGINT, _handler)
 
-    try:
-        yield
-    finally:
-        _release()
+    if ignore_original_handler:
+        try:
+            yield
+        except KeyboardInterrupt:
+            pass
+        finally:
+            _release()
+    else:
+        try:
+            yield
+        finally:
+            _release()
