@@ -153,7 +153,7 @@ class PlanCLI:
 
         true_n_args, true_cls = None, None
         for n_args, cls in __VARARGS_VALIDATION:
-            if len(args) < n_args:
+            if len(args) - (1 if with_final_num else 0) < n_args:
                 continue
 
             try:
