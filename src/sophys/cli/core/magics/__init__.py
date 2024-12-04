@@ -175,15 +175,15 @@ def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int =
         nonlocal _count
         _count += 1
 
+        if _count in callbacks:
+            callbacks[_count]()
+
         if _count > max_signal_count and not _released:
             _release()
 
             _original_handler(signum, frame)
 
             return
-
-        if _count in callbacks:
-            callbacks[_count]()
 
     signal.signal(signal.SIGINT, _handler)
 
