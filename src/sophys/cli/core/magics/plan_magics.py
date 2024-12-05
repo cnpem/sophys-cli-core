@@ -312,7 +312,7 @@ class PlanScan(PlanCLI):
         _a = super().create_parser()
 
         _a.add_argument("-m", "--motors", nargs='+', type=str)
-        _a.add_argument("-n", "--num", type=int, default=1)
+        _a.add_argument("-n", "--num", type=int, default=-1)
 
         return _a
 
@@ -320,7 +320,7 @@ class PlanScan(PlanCLI):
         detectors = self.get_real_devices_if_needed(parsed_namespace.detectors, local_ns)
         _args = parsed_namespace.motors
         _num = parsed_namespace.num
-        args, num, motors = self.parse_varargs(_args, local_ns, with_final_num=True, default_num=_num)
+        args, num, motors = self.parse_varargs(_args, local_ns, with_final_num=(_num == -1), default_num=_num)
 
         md = self.parse_md(*parsed_namespace.detectors, *motors, ns=parsed_namespace)
 
