@@ -3,6 +3,7 @@ import subprocess
 import typing
 
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 
 from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
@@ -475,9 +476,39 @@ class HTTPMagics(Magics):
         history_items = self.get_history(manager)
 
         from IPython.core import page
-        render = "queueserver history - More recent entries are at the top.\n\n\n"
+        render = "queueserver history - More recent entries are at the top.\n"
+        render += "  Press 'q' to exit this view.\n\n\n"
         render += "\n\n\n".join(pretty_render_history_item(item, i) for i, item in history_items)
-        page.page(render)
+
+        @contextmanager
+        def disabled_bec():
+            table_originally_enabled = False
+            headings_originally_enabled = False
+            baseline_originally_enabled = False
+
+            bec = get_from_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, ns=local_ns)
+
+            if bec is not None:
+                table_originally_enabled = bec._table_enabled
+                bec.disable_table()
+                headings_originally_enabled = bec._heading_enabled
+                bec.disable_heading()
+                baseline_originally_enabled = bec._baseline_enabled
+                bec.disable_baseline()
+
+            try:
+                yield
+            finally:
+                if bec is not None:
+                    if table_originally_enabled:
+                        bec.enable_table()
+                    if headings_originally_enabled:
+                        bec.enable_heading()
+                    if baseline_originally_enabled:
+                        bec.enable_baseline()
+
+        with disabled_bec():
+            page.page(render)
 
     @staticmethod
     def description():
