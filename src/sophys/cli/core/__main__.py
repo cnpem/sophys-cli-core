@@ -45,7 +45,7 @@ def entrypoint():
     parser = ArgumentParser()
     parser.add_argument("extension", help="The extension to load the configuration from.")
     parser.add_argument("--debug", help="Configure debug mode, with more verbose logging and error messgaes.", action="store_true")
-    parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer.", action="store_true")
+    parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer (implies --test).", action="store_true")
     parser.add_argument("--test", help="Setup testing configurations to test the tool without interfering with production configured parameters.", action="store_true")
     parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_false")
     args = parser.parse_args()
@@ -95,6 +95,8 @@ def entrypoint():
     ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{extension}"]
 
     ipy_config.TerminalInteractiveShell.confirm_exit = False
+
+    args.test = args.test or args.local
 
     import IPython
     init_ns = {
