@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import atexit
 import functools
 import getpass
@@ -8,10 +10,142 @@ import typing
 
 from contextlib import contextmanager
 from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
 
 from bluesky_queueserver_api.comm_base import HTTPClientError, HTTPRequestError, RequestParameterError, RequestTimeoutError
 from bluesky_queueserver_api.http import REManagerAPI as RM_HTTP_Sync
 from bluesky_queueserver_api.console_monitor import _ConsoleMonitor
+
+
+# https://blueskyproject.io/bluesky-queueserver/re_manager_api.html#status
+class RM(RM_HTTP_Sync):
+    """
+    RunEngine Manager class with improved support for LSP completion.
+
+    It simply wraps the base functions in processors that add the data
+    to structured data classes.
+    """
+    @dataclass(init=False)
+    class UIDs:
+        running_item: typing.Optional[str]
+        """UID of the currently running plan or None if no plan is currently running."""
+        run_list: str
+        """UID of the list of the active runs."""
+
+        plan_queue: str
+        """UID which is updated each time the contents of the queue is changed."""
+        plan_history: str
+        """UID which is updated each time the contents of the history is changed."""
+
+        task_results: str
+        """UID of the dictionary of task results."""
+
+        plans_allowed: str
+        """UID for the list of allowed plans."""
+        devices_allowed: str
+        """UID for the list of allowed devices."""
+
+        plans_existing: str
+        """UID for the list of existing plans in RE Worker namespace."""
+        devices_existing: str
+        """UID for the list of existing devices in RE Worker namespace."""
+
+        lock_info: str
+
+    class QueueMode:
+        loop: bool
+        ignore_failures: bool
+
+    class ManagerState(StrEnum):
+        Initializing = "initializing"
+        """RE Manager is initializing (the RE Manager is starting or restarting)."""
+        Idle = "idle"
+        """RE Manager is idle and ready to execute requests."""
+        Paused = "paused"
+        """A plan was paused and Run Engine is in the paused state."""
+
+        StartingQueue = "starting_queue"
+        """Preparing to execute the queue."""
+        ExecutingQueue = "executing_queue"
+        """Queue is being executed."""
+
+        ExecutingTask = "executing_task"
+        """A foreground task (function or script) is being executed."""
+
+        CreatingEnvironment = "creating_environment"
+        """RE Worker environment is in the process of being created."""
+        ClosingEnvironment = "closing_environment"
+        """RE Worker environment is in the process of being closed (safe)."""
+        DestroyingEnvironment = "destroying_environment"
+        """RE Worker environment is in the process of being destroyed (emergency)."""
+
+    class WorkerEnvironmentState(StrEnum):
+        Initializing = "initializing"
+        Failed = "failed"
+        Idle = "idle"
+
+        ExecutingPlan = "executing_plan"
+        ExecutingTask = "executing_task"
+
+        Closing = "closing"
+        Closed = "closed"
+
+    @dataclass(init=False)
+    class Status(dict):
+        version: str
+
+        num_items_in_queue: int
+        num_items_in_history: int
+
+        uids: RM.UIDs
+
+        manager_state: RM.ManagerState
+        re_state: typing.Optional[str]
+
+        worker_environment_exists: bool
+        worker_environment_state: RM.WorkerEnvironmentState
+
+        queue_mode: RM.QueueMode
+
+        autostart_enabled: bool
+        stop_pending: bool
+        pause_pending: bool
+
+    def status(self, *, reload=False):
+        sts_d = super().status(reload=False)
+
+        sts = self.Status(**sts_d)
+
+        sts.version = sts_d["msg"]
+        sts.num_items_in_queue = sts_d["items_in_queue"]
+        sts.num_items_in_history = sts_d["items_in_history"]
+
+        sts.uids = self.UIDs()
+        sts.uids.running_item = sts_d["running_item_uid"]
+        sts.uids.run_list = sts_d["run_list_uid"]
+        sts.uids.plan_queue = sts_d["plan_queue_uid"]
+        sts.uids.plan_history = sts_d["plan_history_uid"]
+        sts.uids.task_results = sts_d["task_results_uid"]
+        sts.uids.plans_allowed = sts_d["plans_allowed_uid"]
+        sts.uids.devices_allowed = sts_d["devices_allowed_uid"]
+        sts.uids.plans_existing = sts_d["plans_existing_uid"]
+        sts.uids.devices_existing = sts_d["devices_existing_uid"]
+        sts.uids.lock_info = sts_d["lock_info_uid"]
+
+        sts.queue_mode = self.QueueMode()
+        sts.queue_mode.loop = sts_d["plan_queue_mode"]["loop"]
+        sts.queue_mode.ignore_failures = sts_d["plan_queue_mode"]["ignore_failures"]
+
+        sts.manager_state = sts_d["manager_state"]
+        sts.re_state = sts_d["re_state"]
+        sts.worker_environment_exists = sts_d["worker_environment_exists"]
+        sts.worker_environment_state = sts_d["worker_environment_state"]
+        sts.autostart_enabled = sts_d["queue_autostart_enabled"]
+        sts.stop_pending = sts_d["queue_stop_pending"]
+        sts.pause_pending = sts_d["pause_pending"]
+
+        return sts
 
 
 class RemoteSessionHandler(threading.Thread):
@@ -30,7 +164,7 @@ class RemoteSessionHandler(threading.Thread):
         super().__init__(daemon=True)
 
         self._logger = logging.getLogger("sophys_cli.http")
-        self._manager = RM_HTTP_Sync(http_server_uri=http_server_uri, http_auth_provider="ldap/token")
+        self._manager = RM(http_server_uri=http_server_uri, http_auth_provider="ldap/token")
 
         self._running = False
         self._authorized = False
@@ -42,7 +176,7 @@ class RemoteSessionHandler(threading.Thread):
 
         self._last_cancel_time = 0
 
-    def get_authorized_manager(self):
+    def get_authorized_manager(self) -> RM:
         """Retrieve the REManager instance, asking for credential if needed."""
         if not self._authorized:
             # If we cancelled just a short while ago, consider this attempt as a cancel too.

@@ -9,7 +9,7 @@ from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, line_magic, needs_local_scope
 
 from . import in_debug_mode, render_custom_magics, NamespaceKeys, get_from_namespace, get_color, handle_ctrl_c_signals
-from ..http_utils import monitor_console
+from ..http_utils import RM, monitor_console
 
 
 class ToolMagicBase(ABC):
@@ -347,24 +347,24 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def query_state(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+        manager: RM = self.get_manager(local_ns)
         if manager is None:
             return
 
-        def pretty_print_state(state):
+        def pretty_print_state(state: RM.Status):
             print()
-            print(f"Version: {state['msg']}")
+            print(f"Version: {state.version}")
             print( "Running state:")  # noqa: E201
-            print(f"  Manager: {state['manager_state']}")
-            print(f"  RunEngine: {state['re_state']} (Exists: {state['worker_environment_exists']} | State: {state['worker_environment_state']})")
-            print(f"  Items:  Queue ({state['items_in_queue']}) | History ({state['items_in_history']})")
+            print(f"  Manager: {state.manager_state}")
+            print(f"  RunEngine: {state.re_state} (Exists: {state.worker_environment_exists} | State: {state.worker_environment_state})")
+            print(f"  Items:  Queue ({state.num_items_in_queue}) | History ({state.num_items_in_history})")
             print( "Server configuration:")  # noqa: E201
-            print(f"  Pause pending: {state['pause_pending']} | Stop pending: {state['queue_stop_pending']}")
-            print(f"  Autostart: {state["queue_autostart_enabled"]}")
-            print(f"  Loop: {state['plan_queue_mode']['loop']}")
+            print(f"  Pause pending: {state.pause_pending} | Stop pending: {state.stop_pending}")
+            print(f"  Autostart: {state.autostart_enabled}")
+            print(f"  Loop: {state.queue_mode.loop}")
             print()
 
-            if state["running_item_uid"] is not None:
+            if state.uids.running_item is not None:
                 print("Running plan information:")
 
                 res = manager.queue_get()
