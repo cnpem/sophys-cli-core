@@ -395,8 +395,8 @@ class HTTPMagics(Magics):
 
         try:
             res = manager.status()
-        except Exception:
-            pass
+        except Exception as e:
+            self._logger.exception("An exception has occured when trying to query the server state:", *e.args)
         else:
             pretty_print_state(res)
 
