@@ -103,10 +103,12 @@ def render_custom_magics(ipython):
     return render
 
 
-def setup_remote_session_handler(ipython, address: str):
-    _remote_session_handler = RemoteSessionHandler(address)
+def setup_remote_session_handler(ipython, address: str, *, disable_authentication: bool = False):
+    _remote_session_handler = RemoteSessionHandler(address, disable_authentication=disable_authentication)
     _remote_session_handler.start()
-    _remote_session_handler.ask_for_authentication()
+
+    if not disable_authentication:
+        _remote_session_handler.ask_for_authentication()
 
     add_to_namespace(NamespaceKeys.REMOTE_SESSION_HANDLER, _remote_session_handler, ipython)
 
