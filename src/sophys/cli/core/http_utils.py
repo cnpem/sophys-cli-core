@@ -154,17 +154,27 @@ class RemoteSessionHandler(threading.Thread):
 
     Calling `start()` on an object of this class will keep refreshing the access tokens
     for as long as it runs. Call `close()` then to stop it, closing the manager connection.
+
+    You can use the `disable_authentication` keyword argument in the constructor to avoid
+    asking the user to authenticate whenever they aren't already, if you need to.
+    This will make all API calls come from UNAUTHENTICATED_PUBLIC, and the server role
+    restrictions apply. You can still use the `ask_for_authentication` method if you want
+    to manually authenticate the user.
     """
 
     CANCEL_CACHE_TIME = 1.0
     """The amount of time to wait between consecutive authorization attempts when cancelling."""
 
     @functools.wraps(threading.Thread.__init__)
-    def __init__(self, http_server_uri):
+    def __init__(self, http_server_uri, *, disable_authentication: bool = False):
         super().__init__(daemon=True)
 
         self._logger = logging.getLogger("sophys_cli.http")
         self._manager = RM(http_server_uri=http_server_uri, http_auth_provider="ldap/token")
+
+        self._enable_authentication = not disable_authentication
+        if disable_authentication:
+            self._logger.warning("Running the remote session handler without authentication enabled. Server restriction to unauthenticated users will apply.")
 
         self._running = False
         self._authorized = False
@@ -178,7 +188,7 @@ class RemoteSessionHandler(threading.Thread):
 
     def get_authorized_manager(self) -> RM:
         """Retrieve the REManager instance, asking for credential if needed."""
-        if not self._authorized:
+        if not self._authorized and self._enable_authentication:
             # If we cancelled just a short while ago, consider this attempt as a cancel too.
             if time.monotonic() - self._last_cancel_time > self.CANCEL_CACHE_TIME:
                 self.ask_for_authentication()
