@@ -6,8 +6,10 @@ import numpy as np
 
 
 class DataSource:
+    # TODO: Move these definitions to extensions
     class DataType(enum.StrEnum):
         DETECTORS = "detector"
+        MAIN_DETECTOR = "main_detector"
         BEFORE = "before"
         DURING = "during"
         AFTER = "after"
@@ -78,6 +80,8 @@ class RedisDataSource(DataSource):
         match type:
             case DataSource.DataType.DETECTORS:
                 return "sophys_detectors"
+            case DataSource.DataType.MAIN_DETECTOR:
+                return "sophys_detectors_main"
             case DataSource.DataType.BEFORE:
                 return "sophys_metadata_read_before"
             case DataSource.DataType.DURING:
