@@ -54,7 +54,7 @@ def execute_at_start():
     add_to_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, BEC, _globals=globals())
 
     kafka_topic = default_topic_names()[0]
-    if get_from_namespace(NamespaceKeys.TEST_MODE, False):
+    if get_from_namespace(NamespaceKeys.TEST_MODE, False) and get_from_namespace(NamespaceKeys.LOCAL_MODE, False):
         kafka_topic = kafka_topic.replace(EXTENSION, "test")
 
     add_to_namespace(NamespaceKeys.KAFKA_TOPIC, kafka_topic, _globals=globals())
