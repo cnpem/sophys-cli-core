@@ -113,9 +113,6 @@ def execute_at_start():
         D = SimpleNamespace(**_dev)
         sophys_logger.debug("Instantiation completed successfully!")
 
-        from sophys.ema.plans.preprocessors import create_mnemonic_names_inserter_preprocessor
-        RE.preprocessors.append(create_mnemonic_names_inserter_preprocessor(_dev.values()))
-
         add_to_namespace(NamespaceKeys.RUN_ENGINE, RE, _globals=globals())
         add_to_namespace(NamespaceKeys.DEVICES, D, _globals=globals())
 
