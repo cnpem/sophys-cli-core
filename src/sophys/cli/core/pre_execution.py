@@ -106,11 +106,17 @@ def execute_at_start():
             monitor = create_kafka_monitor(kafka_topic, default_bootstrap_servers(), [DB.v1.insert, update_last_data, BEC_callback])
             add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=globals())
 
+        class StrSimpleNamespace(SimpleNamespace):
+            """SimpleNamespace subclass that does not access its elements on __repr__ calls."""
+
+            def __repr__(self):
+                return "\n".join(self.__dict__.keys())
+
         # Leave this last so device instantiation errors do not prevent everything else from working
         D = None
         sophys_logger.debug("Instantiating and connecting to devices...")
         _dev = instantiate_devices()
-        D = SimpleNamespace(**_dev)
+        D = StrSimpleNamespace(**_dev)
         sophys_logger.debug("Instantiation completed successfully!")
 
         add_to_namespace(NamespaceKeys.RUN_ENGINE, RE, _globals=globals())
