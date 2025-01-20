@@ -189,6 +189,30 @@ class HTTPMagics(Magics):
 
             manager.wait_for_idle()
 
+    def _reload_devices(self, manager):
+        res = manager.devices_allowed()
+        if not res["success"]:
+            self._logger.warning("Failed to request available devices: %s", res["msg"])
+        else:
+            self._logger.debug("Upstream allowed devices: %s", " ".join(res["devices_allowed"].keys()))
+
+            # We need to modify the original one, not the 'local_ns', which is a copy.
+            get_ipython().push({"D": set(res["devices_allowed"])})
+
+    def _reload_plans(self, manager):
+        res = manager.plans_allowed()
+        if not res["success"]:
+            self._logger.warning("Failed to request available plans: %s", res["msg"])
+        else:
+            if not hasattr(self, "plan_whitelist"):
+                self._logger.warning("No plan whitelist has been set. Using the empty set.")
+                self.plan_whitelist = set()
+
+            self._logger.debug("Upstream allowed plans: %s", " ".join(res["plans_allowed"].keys()))
+
+            # We need to modify the original one, not the 'local_ns', which is a copy.
+            get_ipython().push({"P": self.plan_whitelist & set(res["plans_allowed"])})
+
     @line_magic
     def wait_for_idle(self, line):
         manager = self.get_manager()
@@ -315,14 +339,7 @@ class HTTPMagics(Magics):
         if manager is None:
             return
 
-        res = manager.devices_allowed()
-        if not res["success"]:
-            self._logger.warning("Failed to request available devices: %s", res["msg"])
-        else:
-            self._logger.debug("Upstream allowed devices: %s", " ".join(res["devices_allowed"].keys()))
-
-            # We need to modify the original one, not the 'local_ns', which is a copy.
-            get_ipython().push({"D": set(res["devices_allowed"])})
+        self._reload_devices(manager)
 
     @line_magic
     @needs_local_scope
@@ -331,18 +348,7 @@ class HTTPMagics(Magics):
         if manager is None:
             return
 
-        res = manager.plans_allowed()
-        if not res["success"]:
-            self._logger.warning("Failed to request available plans: %s", res["msg"])
-        else:
-            if not hasattr(self, "plan_whitelist"):
-                self._logger.warning("No plan whitelist has been set. Using the empty set.")
-                self.plan_whitelist = set()
-
-            self._logger.debug("Upstream allowed plans: %s", " ".join(res["plans_allowed"].keys()))
-
-            # We need to modify the original one, not the 'local_ns', which is a copy.
-            get_ipython().push({"P": self.plan_whitelist & set(res["plans_allowed"])})
+        self._reload_plans(manager)
 
     @line_magic
     @needs_local_scope
@@ -413,6 +419,8 @@ class HTTPMagics(Magics):
             return
 
         self._reload_environment(manager, "force" in line, self._logger)
+        self._reload_devices(manager)
+        self._reload_plans(manager)
 
     @line_magic
     @needs_local_scope
