@@ -106,6 +106,21 @@ class PlanCLI:
         """
         if self._mode_of_operation == ModeOfOperation.Local:
             return self.get_real_devices(device_names, local_ns)
+
+        for device_name in device_names:
+            if device_name not in get_from_namespace(NamespaceKeys.DEVICES, ns=local_ns):
+                exc_msg = f"""
+There is no device named '{device_name}' available.
+
+It may be a typo (check your spelling), and then try again.
+
+It may also be the case that the connection failed on startup.
+Please check the IOC is up and reachable, and run 'reload_environment' to try again.
+
+If none of the mentioned worked, it is probably a bug. In this case, please contact the reponsible personnel for support.
+"""
+                raise Exception(exc_msg)
+
         return device_names
 
     def parse_varargs(self, args, local_ns, with_final_num=False, default_num=None):
