@@ -32,6 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest",
+  "pytest-mock",
 ]
 all = [
   "sophys-cli-core[dev]"
