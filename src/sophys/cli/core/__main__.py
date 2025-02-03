@@ -96,6 +96,9 @@ def entrypoint():
 
     ipy_config.TerminalInteractiveShell.confirm_exit = False
 
+    ipy_config.InteractiveShellApp.auto_create = True
+    ipy_config.InteractiveShellApp.profile = "sophys-cli"
+
     args.test = args.test or args.local
 
     import IPython
