@@ -1,7 +1,5 @@
 import pytest
 
-import numpy as np
-
 from sophys.cli.core.data_source import DataSource, LocalInMemoryDataSource, RedisDataSource
 
 
@@ -9,34 +7,24 @@ data_sources_list = (LocalInMemoryDataSource, RedisDataSource)
 
 
 @pytest.fixture(params=data_sources_list)
-def data_source(request, tmp_path, mocker):
+def data_source(request):
     args = ()
+
     if request.param == RedisDataSource:
-        args = ("localhost", "0")
+        args = ("localhost", 12345)
 
-        # Mocked Redis object
-        _redis_backend = dict()
+        import fakeredis
+        from threading import Thread
 
-        def keys(_r, x):
-            return list(i for i in _redis_backend.keys() if i == x)
+        redis_server = fakeredis.TcpFakeServer(args, server_type="redis")
+        redis_server_thread = Thread(target=redis_server.serve_forever, args=(0.05,), daemon=True)
+        redis_server_thread.start()
 
-        def smembers(_r, x):
-            return np.array(list(_redis_backend.get(x, [])))
+    yield (request.param)(*args)
 
-        def sadd(_r, x, *a):
-            _redis_backend[x] = set(a)
-
-        def srem(_r, x, *a):
-            _redis_backend[x].difference_update(set(a))
-
-        import redis
-        redis.Redis.__init__ = lambda *a, **k: None
-        redis.Redis.keys = keys
-        redis.Redis.smembers = smembers
-        redis.Redis.sadd = sadd
-        redis.Redis.srem = srem
-
-    return (request.param)(*args)
+    if request.param == RedisDataSource:
+        redis_server.shutdown()
+        redis_server_thread.join()
 
 
 def test_add_get_simple(data_source: DataSource):

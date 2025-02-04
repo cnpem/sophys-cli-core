@@ -32,7 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest",
-  "pytest-mock",
+  "fakeredis",
 ]
 all = [
   "sophys-cli-core[dev]"
