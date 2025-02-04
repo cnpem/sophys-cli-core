@@ -16,7 +16,12 @@ def data_source(request):
         import fakeredis
         from threading import Thread
 
-        redis_server = fakeredis.TcpFakeServer(args, server_type="redis")
+        redis_server = fakeredis.TcpFakeServer(args, server_type="redis", bind_and_activate=False)
+        redis_server.daemon_threads = True
+        redis_server.allow_reuse_address = True
+        redis_server.server_bind()
+        redis_server.server_activate()
+
         redis_server_thread = Thread(target=redis_server.serve_forever, args=(0.05,), daemon=True)
         redis_server_thread.start()
 
@@ -24,6 +29,7 @@ def data_source(request):
 
     if request.param == RedisDataSource:
         redis_server.shutdown()
+        redis_server.server_close()
         redis_server_thread.join()
 
 
