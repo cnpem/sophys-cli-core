@@ -241,8 +241,12 @@ class RemoteSessionHandler(threading.Thread):
             # Wait until the user asks for something and authenticates.
             if not self._authorized:
                 self._logger.debug("Waiting for authorization...")
-                while not self._authorized:
+                while self._running and not self._authorized:
                     time.sleep(1.0)
+
+            # Usually in case we stopped running when waiting for authorization.
+            if not self._running:
+                break
 
             time_until_next_refresh = self._total_session_token_valid_time - (time.monotonic() - self._last_refresh_time)
             time_until_next_refresh -= 1  # Give a bit of leeway
@@ -273,6 +277,10 @@ class RemoteSessionHandler(threading.Thread):
                 pass
 
     def close(self):
+        if not self._running:
+            # Already closed.
+            return
+
         self._logger.debug("Logging out and closing the manager...")
         try:
             self._manager.logout()
