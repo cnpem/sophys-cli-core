@@ -331,6 +331,9 @@ def monitor_console(console_monitor: _ConsoleMonitor, on_line_received: typing.O
     _bg.start()
     console_monitor.enable()
 
+    while console_monitor._console_output_last_msg_uid == "":
+        time.sleep(0.01)
+
     _logger.debug("Started monitoring console %s.", repr(console_monitor))
     try:
         yield
