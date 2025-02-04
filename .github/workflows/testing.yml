@@ -1,0 +1,19 @@
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Run existing tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: 3.12
+      - uses: actions/checkout@v4
+      - name: Install package
+        run: pip install ".[all]"
+      - name: Run pytest
+        run: pytest -vvv
