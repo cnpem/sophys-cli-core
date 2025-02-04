@@ -16,6 +16,8 @@ jobs:
         with:
           python-version: 3.12
       - uses: actions/checkout@v4
+      - name: Install sophys-common
+        run: pip install git+https://github.com/cnpem/sophys-common.git
       - name: Install package
         run: pip install ".[all]"
       - name: Run pytest
