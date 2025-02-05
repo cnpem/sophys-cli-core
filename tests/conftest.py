@@ -1,10 +1,20 @@
 import pytest
 
+import os
+import time
+
 import httpx
 
 from sophys.cli.core.http_utils import RM, RemoteSessionHandler
 
 from .mock_data import *
+
+
+@pytest.fixture(scope="session", autouse=True)
+def set_timezone():
+    # NOTE: Arbitrary TZ. Useful for my tests because it's an hour of difference from me.
+    os.environ["TZ"] = "America/Noronha"
+    time.tzset()
 
 
 @pytest.fixture(scope="session")
