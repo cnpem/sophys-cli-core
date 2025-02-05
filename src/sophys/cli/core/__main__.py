@@ -1,7 +1,11 @@
+import typing
+
 from argparse import ArgumentParser
 from pathlib import Path
 
 from traitlets.config import Config
+
+import IPython
 
 from . import BANNER_NAME_EXTEND
 from .magics import NamespaceKeys
@@ -17,9 +21,9 @@ variables_desc = {
 }
 
 
-def create_banner_text(args):
+def create_banner_text(is_local: bool):
     banner_variables = ["D", "P", "DB", "LAST", "BEC"]
-    if args.local:
+    if is_local:
         banner_variables.append("RE")
     banner_variables.sort()
 
@@ -30,7 +34,7 @@ def create_banner_text(args):
             banner_lines.append(f"{var:<{BANNER_NAME_EXTEND}}: {variables_desc[var]}")
         banner_lines.append("")
 
-    if args.local:
+    if is_local:
         banner_lines += [
             "The custom available modules are:",
             f"{"bp":<{BANNER_NAME_EXTEND}}: bluesky.plans",
@@ -47,11 +51,20 @@ def entrypoint():
     parser.add_argument("--debug", help="Configure debug mode, with more verbose logging and error messgaes.", action="store_true")
     parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer (implies --test).", action="store_true")
     parser.add_argument("--test", help="Setup testing configurations to test the tool without interfering with production configured parameters.", action="store_true")
-    parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_false")
+    parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_true")
     args = parser.parse_args()
 
-    extension = args.extension
+    start_cls, kwargs = create_kernel(not args.nocolor, args.local, args.test, args.debug, extension_name=args.extension)
+    start_cls(**kwargs)
 
+
+def create_kernel(
+        use_colors: bool,
+        in_local_mode: bool,
+        in_test_mode: bool,
+        debug_mode: bool,
+        extension_name: typing.Optional[str] = None,
+        ):
     # Documentation: https://ipython.readthedocs.io/en/stable/config/options/kernel.html
     ipy_config = Config()
 
@@ -69,12 +82,12 @@ def entrypoint():
             "print": {
                 "class": "logging.StreamHandler",
                 "level": "DEBUG",
-                "formatter": "default" if not args.debug else "debug",
+                "formatter": "default" if not debug_mode else "debug",
             },
         },
         "loggers": {
             "kafka": {
-                "level": "WARNING" if not args.debug else "INFO",
+                "level": "WARNING" if not debug_mode else "INFO",
                 "handlers": ["print"],
             },
             "kafka.coordinator.consumer": {
@@ -82,7 +95,7 @@ def entrypoint():
                 "handlers": ["print"],
             },
             "sophys_cli": {
-                "level": "INFO" if not args.debug else "DEBUG",
+                "level": "INFO" if not debug_mode else "DEBUG",
                 "handlers": ["print"],
             },
         }
@@ -90,24 +103,27 @@ def entrypoint():
 
     ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "pre_execution.py")]
 
-    ipy_config.InteractiveShell.banner2 = create_banner_text(args)
+    ipy_config.InteractiveShell.banner2 = create_banner_text(in_local_mode)
 
-    ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{extension}"]
+    if extension_name is not None:
+        ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{extension_name}"]
 
     ipy_config.TerminalInteractiveShell.confirm_exit = False
 
     ipy_config.InteractiveShellApp.auto_create = True
     ipy_config.InteractiveShellApp.profile = "sophys-cli"
 
-    args.test = args.test or args.local
+    in_test_mode = in_test_mode or in_local_mode
 
-    import IPython
-    init_ns = {
-        "EXTENSION": extension,
-        NamespaceKeys.DEBUG_MODE: args.debug,
-        NamespaceKeys.LOCAL_MODE: args.local,
-        NamespaceKeys.TEST_MODE: args.test,
-        NamespaceKeys.COLORIZED_OUTPUT: args.nocolor,
-    }
-    IPython.start_ipython(argv=[], config=ipy_config, user_ns=init_ns)
+    init_ns = {}
+    if extension_name is not None:
+        init_ns.update({"EXTENSION": extension_name})
+    init_ns.update({
+        NamespaceKeys.DEBUG_MODE: debug_mode,
+        NamespaceKeys.LOCAL_MODE: in_local_mode,
+        NamespaceKeys.TEST_MODE: in_test_mode,
+        NamespaceKeys.COLORIZED_OUTPUT: use_colors,
+    })
+
+    return IPython.start_ipython, {"argv": [], "config": ipy_config, "user_ns": init_ns}
 
