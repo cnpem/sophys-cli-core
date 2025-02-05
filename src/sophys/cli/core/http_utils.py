@@ -113,7 +113,7 @@ class RM(RM_HTTP_Sync):
         pause_pending: bool
 
     def status(self, *, reload=False):
-        sts_d = super().status(reload=False)
+        sts_d = super().status(reload=reload)
 
         sts = self.Status(**sts_d)
 
