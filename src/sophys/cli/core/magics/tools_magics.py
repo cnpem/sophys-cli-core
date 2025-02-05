@@ -139,21 +139,24 @@ class HTTPMagics(Magics):
 
         self._logger = logging.getLogger("sophys_cli.tools")
 
-    def get_manager(self, local_ns=None):
+    @classmethod
+    def get_manager(cls, local_ns=None, logger=None):
         """Configure 'local_ns' to None if using nested magics."""
         remote_session_handler = get_from_namespace(NamespaceKeys.REMOTE_SESSION_HANDLER, ns=local_ns)
         if remote_session_handler is None:
-            self._logger.debug("No '_remote_session_handler' variable present in local_ns.")
-            self._logger.debug("local_ns contents: %s", " ".join(local_ns.keys()))
+            if logger is not None:
+                logger.debug("No '_remote_session_handler' variable present in local_ns.")
+                logger.debug("local_ns contents: %s", " ".join(local_ns.keys()))
             return
 
         return remote_session_handler.get_authorized_manager()
 
-    def get_history(self, manager) -> typing.Sequence[tuple[int, dict]] | None:
+    @classmethod
+    def get_history(self, manager, logger) -> typing.Sequence[tuple[int, dict]] | None:
         """Retrieve the plan execution history, from most recent to oldest entries."""
         res = manager.history_get()
         if not res["success"]:
-            self._logger.warning("Failed to query the history: %s", res["msg"])
+            logger.warning("Failed to query the history: %s", res["msg"])
             return
 
         if len(res["items"]) == 0:
@@ -215,7 +218,7 @@ class HTTPMagics(Magics):
 
     @line_magic
     def wait_for_idle(self, line):
-        manager = self.get_manager()
+        manager = self.get_manager(logger=self._logger)
         if manager is None:
             return
 
@@ -248,7 +251,7 @@ class HTTPMagics(Magics):
             manager.wait_for_idle()
 
         if not tried_to_stop:
-            history_items = self.get_history(manager)
+            history_items = self.get_history(manager, logger=self._logger)
             if history_items is None:
                 print("The execution history is empty??? Something has gone terribly wrong!")
                 return
@@ -266,7 +269,7 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def stop(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+        manager = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
@@ -295,7 +298,7 @@ class HTTPMagics(Magics):
         if line == "":
             line = "immediate"
 
-        manager = self.get_manager(local_ns)
+        manager = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
@@ -321,7 +324,7 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def resume(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+        manager = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
@@ -335,7 +338,7 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def reload_devices(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+        manager = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
@@ -344,7 +347,7 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def reload_plans(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+        manager = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
@@ -353,7 +356,7 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def query_state(self, line, local_ns):
-        manager: RM = self.get_manager(local_ns)
+        manager: RM = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
@@ -414,7 +417,7 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def reload_environment(self, line, local_ns):
-        manager = self.get_manager(local_ns)
+        manager = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
@@ -477,11 +480,11 @@ class HTTPMagics(Magics):
 
             return f"Unhandled item type '{item_type}'"
 
-        manager = self.get_manager(local_ns)
+        manager = self.get_manager(local_ns, logger=self._logger)
         if manager is None:
             return
 
-        history_items = self.get_history(manager)
+        history_items = self.get_history(manager, logger=self._logger)
 
         from IPython.core import page
         render = "queueserver history - More recent entries are at the top.\n"
