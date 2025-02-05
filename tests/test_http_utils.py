@@ -7,33 +7,10 @@ import pytest
 
 import httpx
 
-from sophys.cli.core.http_utils import RM, RemoteSessionHandler, monitor_console
+from sophys.cli.core.http_utils import RM, monitor_console
 
 
-@pytest.fixture(scope="session")
-def http_server_uri():
-    return "http://mocked_http_session.lnls.br"
-
-
-@pytest.fixture
-def typed_rm(http_server_uri):
-    return RM(http_server_uri=http_server_uri, http_auth_provider="ldap/token")
-
-
-@pytest.fixture
-def no_auth_session_handler(http_server_uri):
-    return RemoteSessionHandler(http_server_uri, disable_authentication=True)
-
-
-@pytest.fixture
-def mock_api(respx_mock, http_server_uri, status_ok_mock_response):
-    respx_mock.get(http_server_uri + "/api/status").mock(status_ok_mock_response)
-    respx_mock.post(http_server_uri + "/api/auth/logout").mock(httpx.Response(200, json={}))
-
-    return respx_mock
-
-
-def test_typed_rm_status(typed_rm, mock_api, status_ok_mock_response):
+def test_typed_rm_status(typed_rm, ok_mock_api, status_ok_mock_response):
     returned_status = typed_rm.status()
     mocked_json = status_ok_mock_response.json()
 
@@ -68,7 +45,7 @@ def test_remote_session_handler_no_auth_run(no_auth_session_handler):
 
 
 @pytest.fixture
-def console_monitor_mock_api(http_server_uri, mock_api):
+def console_monitor_mock_api(http_server_uri, ok_mock_api):
     console_lines: list[tuple[str, str]] = [(0, "first message")]
 
     def console_output_update(request: httpx.Request):
@@ -81,13 +58,13 @@ def console_monitor_mock_api(http_server_uri, mock_api):
 
         return httpx.Response(200, json={"last_msg_uid": uid, "console_output_msgs": console_output})
 
-    mock_api.get(http_server_uri + "/api/console_output").mock(
+    ok_mock_api.get(http_server_uri + "/api/console_output").mock(
         httpx.Response(200, json={
             "success": True, "msg": "", "text": "\n".join(i[1] for i in console_lines)
         })
     )
 
-    mock_api.get(http_server_uri + "/api/console_output/uid").mock(
+    ok_mock_api.get(http_server_uri + "/api/console_output/uid").mock(
         httpx.Response(200, json={
             "success": True,
             "msg": "",
@@ -95,11 +72,11 @@ def console_monitor_mock_api(http_server_uri, mock_api):
         })
     )
 
-    mock_api.get(http_server_uri + "/api/console_output_update").mock(
+    ok_mock_api.get(http_server_uri + "/api/console_output_update").mock(
         side_effect=console_output_update
     )
 
-    return {"api": mock_api, "console": console_lines}
+    return {"api": ok_mock_api, "console": console_lines}
 
 
 def test_monitor_console(console_monitor_mock_api, typed_rm):
