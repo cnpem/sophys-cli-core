@@ -1,0 +1,103 @@
+import pytest
+
+import asyncio
+
+from pathlib import Path
+from unittest.mock import patch
+
+import IPython
+from IPython.terminal.interactiveshell import TerminalInteractiveShell
+from IPython.testing import globalipapp
+
+from sophys.cli import core
+from sophys.cli.core.__main__ import create_kernel
+from sophys.cli.core.magics import get_from_namespace, add_to_namespace, NamespaceKeys
+from sophys.cli.core.magics.tools_magics import HTTPMagics
+
+
+@pytest.fixture(scope="session", params=[(False, False, False, True), (False, True, True, True)])
+def ipython_app(request, no_auth_session_handler):
+    ip: TerminalInteractiveShell = globalipapp.start_ipython() or globalipapp.get_ipython()
+
+    _, kwargs = create_kernel(*request.param)
+    ip.push(kwargs["user_ns"])
+
+    patch.object(IPython, "get_ipython", globalipapp.get_ipython)
+    code_obj = ip.find_user_code(str(Path(core.__file__).parent / "pre_execution.py"), py_only=True)
+    asyncio.run(ip.run_code(code_obj))
+
+    ip.register_magics(HTTPMagics)
+
+    add_to_namespace(NamespaceKeys.REMOTE_SESSION_HANDLER, no_auth_session_handler, ipython=ip)
+
+    return ip, request.param
+
+
+@pytest.fixture(scope="function")
+def ip_with_params(ipython_app) -> tuple[TerminalInteractiveShell, tuple]:
+    yield ipython_app
+
+
+@pytest.fixture(scope="function")
+def ip(ipython_app) -> TerminalInteractiveShell:
+    def run_magic(magic_name, line):
+        locals().update(ip.user_ns)
+        ip.run_line_magic(magic_name, line)
+
+    ip = ipython_app[0]
+    ip.run_magic = run_magic
+    yield ip
+
+
+def test_instantiate_app(ip_with_params):
+    ip, kernel_params = ip_with_params
+
+    # Defined in the starting ns
+    assert get_from_namespace(NamespaceKeys.COLORIZED_OUTPUT, ipython=ip) is kernel_params[0]
+    assert get_from_namespace(NamespaceKeys.LOCAL_MODE, ipython=ip) is kernel_params[1]
+    assert get_from_namespace(NamespaceKeys.TEST_MODE, ipython=ip) is kernel_params[2]
+    assert get_from_namespace(NamespaceKeys.DEBUG_MODE, ipython=ip) is kernel_params[3]
+
+    # Defined in pre_execution.py
+    from bluesky.callbacks.best_effort import BestEffortCallback
+    assert isinstance(get_from_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, ipython=ip), BestEffortCallback)
+
+
+def test_get_manager(ip):
+    assert get_from_namespace(NamespaceKeys.REMOTE_SESSION_HANDLER, ipython=ip) is not None
+
+    manager = HTTPMagics.get_manager()
+    assert manager is not None
+
+
+def test_query_state_ok_mock(capsys, ip, ok_mock_api):
+    status = HTTPMagics.get_manager().status(reload=True)
+    ip.run_magic("query_state", "")
+
+    captured = capsys.readouterr()
+    assert f"Version: {status.version}" in captured.out, captured
+    assert "Running state:" in captured.out, captured
+    assert f"Manager: {status.manager_state}"
+    assert "Server configuration:" in captured.out, captured
+    assert f"Autostart: {status.autostart_enabled}" in captured.out, captured
+    assert "Running plan information:" not in captured.out, captured
+
+
+def test_query_state_running_plan_mock(capsys, ip, running_plan_mock_api):
+    status = HTTPMagics.get_manager().status(reload=True)
+    ip.run_magic("query_state", "")
+
+    captured = capsys.readouterr()
+    assert f"Version: {status.version}" in captured.out, captured
+    assert "Running state:" in captured.out, captured
+    assert f"Manager: {status.manager_state}"
+    assert "Server configuration:" in captured.out, captured
+    assert f"Autostart: {status.autostart_enabled}" in captured.out, captured
+
+    assert "Running plan information:" in captured.out, captured
+    assert "Plan name: setup1_load_procedure" in captured.out, captured
+    assert "kwargs: 'a' = A, 'b' = 1, 'metadata' = {'aa': 'xyz', 'bb': 'fgh', 'cc': ''}" in captured.out, captured
+    assert "User: fulana.beltrana" in captured.out, captured
+    assert "Start time: 18:57:01 (30/01/2025)" in captured.out, captured
+
+

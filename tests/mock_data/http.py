@@ -1,11 +1,13 @@
 import pytest
 
+import copy
+
 import httpx
 
 
 @pytest.fixture(scope="session")
-def status_ok_mock_response():
-    return httpx.Response(200, json={
+def status_ok_base():
+    return {
         "msg": "RE Manager v0.1.2.post69.dev0+aaaaaaaa",
         "items_in_queue": 2,
         "items_in_history": 85,
@@ -37,6 +39,50 @@ def status_ok_mock_response():
             "environment": False,
             "queue": False
         }
+    }
+
+
+@pytest.fixture(scope="session")
+def status_ok_mock_response(status_ok_base):
+    return httpx.Response(200, json=status_ok_base)
+
+
+@pytest.fixture(scope="session")
+def status_running_plan_mock_response(status_ok_base):
+    response = copy.deepcopy(status_ok_base)
+    response["running_item_uid"] = "1720dc81-3217-476f-8519-f35d7112bda4"
+
+    return httpx.Response(200, json=response)
+
+
+@pytest.fixture(scope="session")
+def queue_get_running_item_mock_response():
+    return httpx.Response(200, json={
+        "success": True,
+        "msg": "",
+        "plan_queue_uid": "36e8c483-b737-4ffb-be55-7111b71e3695",
+        "running_item": {
+            "name": "setup1_load_procedure",
+            "args": [],
+            "kwargs": {
+                "a": "A",
+                "b": "1",
+                "metadata": {
+                    "aa": "xyz",
+                    "bb": "fgh",
+                    "cc": ""
+                }
+            },
+            "item_type": "plan",
+            "user": "fulana.beltrana",
+            "user_group": "primary",
+            "item_uid": "1720dc81-3217-476f-8519-f35d7112bda4",
+            "properties": {
+                "time_start": 1738274221.7140498,
+                "time_stop": 1738293258.9105783,
+            },
+        },
+        "items": [],
     })
 
 

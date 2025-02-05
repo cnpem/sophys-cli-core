@@ -24,7 +24,20 @@ def no_auth_session_handler(http_server_uri):
 
 @pytest.fixture
 def ok_mock_api(respx_mock, http_server_uri, status_ok_mock_response):
+    respx_mock.clear()
+
     respx_mock.get(http_server_uri + "/api/status").mock(status_ok_mock_response)
+    respx_mock.post(http_server_uri + "/api/auth/logout").mock(httpx.Response(200, json={}))
+
+    return respx_mock
+
+
+@pytest.fixture
+def running_plan_mock_api(respx_mock, http_server_uri, status_running_plan_mock_response, queue_get_running_item_mock_response):
+    respx_mock.clear()
+
+    respx_mock.get(http_server_uri + "/api/status").mock(status_running_plan_mock_response)
+    respx_mock.get(http_server_uri + "/api/queue/get").mock(queue_get_running_item_mock_response)
     respx_mock.post(http_server_uri + "/api/auth/logout").mock(httpx.Response(200, json={}))
 
     return respx_mock
