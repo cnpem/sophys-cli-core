@@ -3,7 +3,7 @@ import functools
 
 from contextlib import contextmanager
 
-from IPython import get_ipython
+import IPython
 
 from .. import BANNER_NAME_EXTEND
 from ..http_utils import RemoteSessionHandler
@@ -35,14 +35,14 @@ def add_to_namespace(key: NamespaceKeys, value, ipython=None, _globals=None):
         return
 
     if ipython is None:
-        ipython = get_ipython()
+        ipython = IPython.get_ipython()
 
     ipython.push({key: value})
 
 
 def get_from_namespace(key: NamespaceKeys, default=None, ipython=None, ns=None):
     if ipython is None and ns is None:
-        ipython = get_ipython()
+        ipython = IPython.get_ipython()
     if ns is None:
         ns = ipython.user_ns
 
