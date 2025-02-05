@@ -101,3 +101,30 @@ def test_query_state_running_plan_mock(capsys, ip, running_plan_mock_api):
     assert "Start time: 18:57:01 (30/01/2025)" in captured.out, captured
 
 
+def test_query_history_ok_mock(capsys, ip, ok_mock_api):
+    HTTPMagics.get_manager().history_get(reload=True)
+    ip.run_magic("query_history", "")
+
+    captured = capsys.readouterr()
+    assert "Entry #0" in captured.out, captured
+    assert "Plan name: grid_scan" in captured.out, captured
+    assert "args: ['det', 'det4'], motor2, -4, 4, 15, motor1, -4, 4, 15" in captured.out, captured
+    assert "kwargs: 'snake_axes' = True, 'md' = {'something': 'abc'}" in captured.out, captured
+    assert "User: fulana.beltrana" in captured.out, captured
+    assert "Time: 14:36:22 (23/10/2024) - 14:36:24 (23/10/2024) (Duration: 2.390s)" in captured.out, captured
+
+
+def test_query_history_failed_plan_mock(capsys, ip, failed_plan_mock_api):
+    HTTPMagics.get_manager().history_get(reload=True)
+    ip.run_magic("query_history", "")
+
+    captured = capsys.readouterr()
+    assert "Entry #0" in captured.out, captured
+    assert "Plan name: grid_scan" in captured.out, captured
+    assert "args: ['det', 'det4'], motor2, -4, 4, 15, motor1, -4, 4, 15" in captured.out, captured
+    assert "kwargs: 'snake_axes' = True, 'md' = {'something': 'abc'}" in captured.out, captured
+    assert "User: fulana.beltrana" in captured.out, captured
+    assert "Time: 14:36:22 (23/10/2024) - 14:36:24 (23/10/2024) (Duration: 2.390s)" in captured.out, captured
+
+    assert "Plan failed: Failed to connect to <PV> within 30.00 sec" in captured.out, captured
+    assert "Traceback (most recent call last):" in captured.out, captured
