@@ -29,6 +29,9 @@ class ToolMagicBase(ABC):
 
 @magics_class
 class KBLMagics(Magics):
+    # Class property
+    extra_arguments = []
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -43,7 +46,7 @@ class KBLMagics(Magics):
         else:
             default_bss = get_from_namespace(NamespaceKeys.KAFKA_BOOTSTRAP)
             default_tn = get_from_namespace(NamespaceKeys.KAFKA_TOPIC)
-            command_line = ["kbl", default_tn, "--bootstrap-servers", " ".join(default_bss)]
+            command_line = ["kbl", default_tn, "--bootstrap-servers", " ".join(default_bss), " ".join(KBLMagics.extra_arguments)]
 
         kwargs = {"start_new_session": True}
 
