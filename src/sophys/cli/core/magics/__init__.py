@@ -95,7 +95,9 @@ def render_custom_magics(ipython):
         fst_d = fst.description()[-1]
         snd_d = snd.description()[0]
 
-        if fst_d[-1] != snd_d[-1]:
+        colors_are_the_same = fst_d[-1] == snd_d[-1]
+        has_extra_space = render[pos] == "" or render[pos + 1] == ""
+        if not colors_are_the_same and not has_extra_space:
             render.insert(pos + _extra_index, "")
             _extra_index += 1
 
