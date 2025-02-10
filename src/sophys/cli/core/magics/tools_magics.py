@@ -41,7 +41,7 @@ class KBLMagics(Magics):
         if len(line) > 0:
             command_line = ["kbl", *line.split(" ")]
         else:
-            default_bss = local_ns["default_bootstrap_servers"]()
+            default_bss = get_from_namespace(NamespaceKeys.KAFKA_BOOTSTRAP)
             default_tn = get_from_namespace(NamespaceKeys.KAFKA_TOPIC)
             command_line = ["kbl", default_tn, "--bootstrap-servers", " ".join(default_bss)]
 

@@ -16,6 +16,7 @@ class NamespaceKeys(enum.StrEnum):
     DATABROKER = "DB"
     DEBUG_MODE = "DEBUG"
     DEVICES = "D"
+    KAFKA_BOOTSTRAP = "_kafka_bootstrap"
     KAFKA_MONITOR = "KAFKA_MON"
     KAFKA_TOPIC = "_kafka_topic"
     LAST_DATA = "LAST"

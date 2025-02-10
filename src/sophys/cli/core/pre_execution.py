@@ -81,9 +81,12 @@ def create_kafka_parameters(default_topic_names, default_bootstrap_servers):
     if get_from_namespace(NamespaceKeys.TEST_MODE, False) and get_from_namespace(NamespaceKeys.LOCAL_MODE, False):
         kafka_topic = kafka_topic.replace(EXTENSION, "test")
 
+    bootstrap_servers = default_bootstrap_servers()
+
+    add_to_namespace(NamespaceKeys.KAFKA_BOOTSTRAP, bootstrap_servers, _globals=globals())
     add_to_namespace(NamespaceKeys.KAFKA_TOPIC, kafka_topic, _globals=globals())
 
-    return kafka_topic, default_bootstrap_servers()
+    return kafka_topic, bootstrap_servers
 
 
 def create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks):
