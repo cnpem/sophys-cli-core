@@ -180,12 +180,7 @@ def execute_at_start():
     # NOTE: This is needed even in the local setting so that `kbl` works even in this case.
     create_kafka_callback(RE, sophys_utils, kafka_logger, kafka_topic, bootstrap_servers, callbacks)
 
-    _dev = instantiate_devices(sophys_logger)
-
-    from sophys.ema.plans.preprocessors import create_metadata_inserter_preprocessor, create_mnemonic_names_inserter_preprocessor, create_check_device_preprocessor
-    RE.preprocessors.append(create_mnemonic_names_inserter_preprocessor(_dev.values()))
-    RE.preprocessors.append(create_metadata_inserter_preprocessor())
-    RE.preprocessors.append(create_check_device_preprocessor())
+    instantiate_devices(sophys_logger)
 
 
 execute_at_start()
