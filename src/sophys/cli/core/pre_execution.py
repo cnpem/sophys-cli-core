@@ -167,7 +167,7 @@ def execute_at_start():
 
     if not get_from_namespace(NamespaceKeys.LOCAL_MODE, False):
         # Remote mode, only setup the monitor
-        # create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
+        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
 
         return
 
