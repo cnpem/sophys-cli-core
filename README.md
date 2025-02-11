@@ -49,6 +49,33 @@ options:
   --nocolor   Remove color codes from rich output.
 ```
 
+### Running commands and scripts automatically
+
+When using pure IPython, we have arguments like `-c`, `-m` and `-i` that allow us to run pre-created routines and code, enabling some form of higher-level automation. In `sophys-cli`, we currently support the `-c` and `-i` flags, working in the same way they would do in IPython (it's actually [exactly passing it on for IPython to deal with it](https://github.com/cnpem/sophys-cli-core/blob/main/src/sophys/cli/core/__main__.py#L122)!).
+
+You can use `-c` directly to run a single line of prompt, or you can use the [`%run`](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run) magic to run an entire script.
+
+As an example of that second case, we could have a file called `my_routine.ipy` in `/home/cool_user/`, with the following:
+
+```python
+print("Starting linear scans...")
+
+for i in range(10, 100, 10):
+  %scan -d SIM_det -m SIM_motor -2 2 --num $i
+
+print("Performing grid scan...")
+
+%grid_scan -d SIM_det4 -m SIM_motor1 -2 2 10 SIM_motor2 -2 2 10
+
+print("Scans completed successfully. Have a nice day!")
+```
+
+Then, running that whole procedure non-interactively is a matter of calling:
+
+```bash
+sophys-cli <extension> -c "%run /home/cool_user/my_routine.ipy"
+```
+
 ## Development
 
 ### Creating your own extension
@@ -84,31 +111,4 @@ plan_whitelist = PlanWhitelist(*whitelisted_plan_list)
 
 ipython.register_magics(HTTPMagics)
 ipython.magics_manager.registry["HTTPMagics"].plan_whitelist = plan_whitelist
-```
-
-### Running commands and scripts automatically
-
-When using pure IPython, we have arguments like `-c`, `-m` and `-i` that allow us to run pre-created routines and code, enabling some form of higher-level automation. In `sophys-cli`, we currently support the `-c` and `-i` flags, working in the same way they would do in IPython (it's actually [exactly passing it on for IPython to deal with it](https://github.com/cnpem/sophys-cli-core/blob/main/src/sophys/cli/core/__main__.py#L122)!).
-
-You can use `-c` directly to run a single line of prompt, or you can use the [`%run`](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run) magic to run an entire script.
-
-As an example of that second case, we could have a file called `my_routine.ipy` in `/home/cool_user/`, with the following:
-
-```python
-print("Starting linear scans...")
-
-for i in range(10, 100, 10):
-  %scan -d SIM_det -m SIM_motor -2 2 --num $i
-
-print("Performing grid scan...")
-
-%grid_scan -d SIM_det4 -m SIM_motor1 -2 2 10 SIM_motor2 -2 2 10
-
-print("Scans completed successfully. Have a nice day!")
-```
-
-Then, running that whole procedure non-interactively is a matter of calling:
-
-```bash
-sophys-cli <extension> -c "%run /home/cool_user/my_routine.ipy"
 ```
