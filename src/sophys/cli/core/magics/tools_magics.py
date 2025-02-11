@@ -75,7 +75,7 @@ class MiscMagics(Magics):
         # Variables
         print(ipython.banner2)
         # Magics
-        print("\n".join(render_custom_magics(ipython)))
+        print("\n".join(render_custom_magics(ipython, consider_blacklist=("all" not in line))))
 
     @line_magic
     @needs_local_scope

@@ -60,10 +60,12 @@ def get_color(color: str) -> str:
     return ""
 
 
-@functools.lru_cache(maxsize=1)
-def render_custom_magics(ipython):
+@functools.lru_cache(maxsize=2)
+def render_custom_magics(ipython, consider_blacklist: bool = True):
     """Render custom magic descriptions."""
-    blacklist = get_from_namespace(NamespaceKeys.BLACKLISTED_DESCRIPTIONS, default=set(), ipython=ipython)
+    blacklist = set()
+    if consider_blacklist:
+        blacklist = get_from_namespace(NamespaceKeys.BLACKLISTED_DESCRIPTIONS, default=set(), ipython=ipython)
 
     _rendered_magics = []
 
