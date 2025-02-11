@@ -39,6 +39,7 @@ def create_bec():
 
 def create_callbacks():
     DB = databroker.Broker.named("temp")
+    add_to_namespace(NamespaceKeys.DATABROKER, DB, _globals=globals())
 
     def update_last_data(name, _):
         if name == "stop":
