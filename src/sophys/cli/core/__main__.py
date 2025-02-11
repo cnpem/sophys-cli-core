@@ -48,13 +48,15 @@ def create_banner_text(is_local: bool):
 def entrypoint():
     parser = ArgumentParser()
     parser.add_argument("extension", help="The extension to load the configuration from.")
+    parser.add_argument("-i", "--interactive", help="Maintain IPython in interactive mode after running the commands (only makes sense with -c).", action="store_true")
+    parser.add_argument("-c", nargs="*", dest="command", help="Run some IPython command right after startup automatically.")
     parser.add_argument("--debug", help="Configure debug mode, with more verbose logging and error messgaes.", action="store_true")
     parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer (implies --test).", action="store_true")
     parser.add_argument("--test", help="Setup testing configurations to test the tool without interfering with production configured parameters.", action="store_true")
     parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_true")
     args = parser.parse_args()
 
-    start_cls, kwargs = create_kernel(not args.nocolor, args.local, args.test, args.debug, extension_name=args.extension)
+    start_cls, kwargs = create_kernel(not args.nocolor, args.local, args.test, args.debug, start_command=args.command, interactive=args.interactive, extension_name=args.extension)
     start_cls(**kwargs)
 
 
@@ -63,6 +65,8 @@ def create_kernel(
         in_local_mode: bool,
         in_test_mode: bool,
         debug_mode: bool,
+        start_command: typing.Optional[list[str]] = None,
+        interactive: typing.Optional[bool] = False,
         extension_name: typing.Optional[str] = None,
         ):
     # Documentation: https://ipython.readthedocs.io/en/stable/config/options/kernel.html
@@ -105,7 +109,7 @@ def create_kernel(
 
     ipy_config.InteractiveShell.banner2 = create_banner_text(in_local_mode)
 
-    if extension_name is not None:
+    if extension_name not in (None, "skip"):
         ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{extension_name}"]
 
     ipy_config.TerminalInteractiveShell.confirm_exit = False
@@ -114,6 +118,12 @@ def create_kernel(
     ipy_config.InteractiveShellApp.profile = "sophys-cli"
 
     in_test_mode = in_test_mode or in_local_mode
+
+    argv = []
+    if start_command:
+        if interactive:
+            argv.append("-i")
+        argv.extend(["-c", " ".join(start_command)])
 
     init_ns = {}
     if extension_name is not None:
@@ -125,5 +135,5 @@ def create_kernel(
         NamespaceKeys.COLORIZED_OUTPUT: use_colors,
     })
 
-    return IPython.start_ipython, {"argv": [], "config": ipy_config, "user_ns": init_ns}
+    return IPython.start_ipython, {"argv": argv, "config": ipy_config, "user_ns": init_ns}
 
