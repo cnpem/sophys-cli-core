@@ -1,29 +1,18 @@
 import functools
-import logging
 import importlib
-
-from types import SimpleNamespace
-
-from kafka.errors import NoBrokersAvailable
-
-from bluesky import RunEngine
-from bluesky import plans as bp, plan_stubs as bps
-from bluesky.callbacks.best_effort import BestEffortCallback
-from bluesky.utils import RunEngineInterrupted
-
-import databroker
-
-from sophys.common.utils.kafka.monitor import ThreadedMonitor
 
 from sophys.cli.core.magics import NamespaceKeys, add_to_namespace, get_from_namespace
 
 
 # Appease LSPs and allow some use of the application with no extension.
-if "EXTENSION" not in globals():
+EXTENSION = globals().get("EXTENSION", None)
+if EXTENSION is None:
     EXTENSION = "common"
 
 
 def create_bec():
+    from bluesky.callbacks.best_effort import BestEffortCallback
+
     BEC = BestEffortCallback()
     BEC.disable_plots()
 
@@ -38,6 +27,8 @@ def create_bec():
 
 
 def create_callbacks():
+    import databroker
+
     DB = databroker.Broker.named("temp")
     add_to_namespace(NamespaceKeys.DATABROKER, DB, _globals=globals())
 
@@ -51,6 +42,9 @@ def create_callbacks():
 
 
 def create_run_engine():
+    from bluesky import RunEngine
+    from bluesky.utils import RunEngineInterrupted
+
     class RunEngineWithoutTracebackOnPause(RunEngine):
         def interruption_wrapper(func):
             @functools.wraps(func)
@@ -91,6 +85,8 @@ def create_kafka_parameters(default_topic_names, default_bootstrap_servers):
 
 
 def create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks):
+    from sophys.common.utils.kafka.monitor import ThreadedMonitor
+
     def __create_kafka_monitor(topic_name: str, bootstrap_servers: list[str], subscriptions: list[callable]):
         monitor = ThreadedMonitor(None, [], topic_name, "kafka.monitor", bootstrap_servers=bootstrap_servers)
         for c in subscriptions:
@@ -104,6 +100,7 @@ def create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks):
 
 
 def create_kafka_callback(RE, sophys_utils, logger, kafka_topic, bootstrap_servers, callbacks):
+    from kafka.errors import NoBrokersAvailable
     make_kafka_callback = sophys_utils.make_kafka_callback
 
     logger.info(f"Connecting to kafka... (IPs: {bootstrap_servers} | Topic: {kafka_topic})")
@@ -125,6 +122,8 @@ def create_kafka_callback(RE, sophys_utils, logger, kafka_topic, bootstrap_serve
 
 
 def instantiate_devices(logger):
+    from types import SimpleNamespace
+
     sophys_devices = importlib.import_module(f"sophys.{EXTENSION}.devices")
     _instantiate_devices = getattr(sophys_devices, "instantiate_devices", None)
 
@@ -153,6 +152,11 @@ def instantiate_devices(logger):
 
 
 def execute_at_start():
+    if EXTENSION == "skip":
+        return
+
+    import logging
+
     callbacks = create_callbacks()
 
     sophys_utils = importlib.import_module(f"sophys.{EXTENSION}.utils")

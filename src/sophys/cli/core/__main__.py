@@ -126,9 +126,8 @@ def create_kernel(
         argv.extend(["-c", " ".join(start_command)])
 
     init_ns = {}
-    if extension_name is not None:
-        init_ns.update({"EXTENSION": extension_name})
     init_ns.update({
+        "EXTENSION": extension_name,
         NamespaceKeys.DEBUG_MODE: debug_mode,
         NamespaceKeys.LOCAL_MODE: in_local_mode,
         NamespaceKeys.TEST_MODE: in_test_mode,

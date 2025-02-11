@@ -1,7 +1,5 @@
 import subprocess
 
-from IPython import get_ipython
-
 from sophys.cli.core.__main__ import create_kernel
 
 
