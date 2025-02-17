@@ -166,3 +166,74 @@ def history_get_failed_plan_mock_response(history_get_base, status_failed_plan_m
  ConnectionTimeoutError: Failed to connect to <PV> within 30.00 sec"""
 
     return httpx.Response(200, json=response)
+
+
+@pytest.fixture(scope="session")
+def devices_get_ok_mock_response():
+    return httpx.Response(200, json={
+      "success": True,
+      "msg": "",
+      "devices_allowed_uid": "3d22e7fc-6c38-4afd-9fcd-4143e28e6ea6",
+      "devices_allowed": {
+        "a": {
+          "is_readable": True,
+          "is_movable": False,
+          "is_flyable": False,
+          "classname": "Scale",
+          "module": "sophys.common.devices.compacteras",
+          "components": {
+            "analog_bw": {
+              "is_readable": True,
+              "is_movable": True,
+              "is_flyable": False,
+              "classname": "EpicsSignal",
+              "module": "ophyd.signal",
+            },
+            "calibration_offset": {
+              "is_readable": True,
+              "is_movable": True,
+              "is_flyable": False,
+              "classname": "EpicsSignal",
+              "module": "ophyd.signal",
+            },
+            "gain_correction": {
+              "is_readable": True,
+              "is_movable": True,
+              "is_flyable": False,
+              "classname": "EpicsSignal",
+              "module": "ophyd.signal",
+            }
+          }
+        },
+        "b": {
+          "is_readable": True,
+          "is_movable": False,
+          "is_flyable": False,
+          "classname": "Scale",
+          "module": "sophys.common.devices.compacteras",
+          "components": {
+            "analog_bw": {
+              "is_readable": True,
+              "is_movable": True,
+              "is_flyable": False,
+              "classname": "EpicsSignal",
+              "module": "ophyd.signal",
+            },
+            "calibration_offset": {
+              "is_readable": True,
+              "is_movable": True,
+              "is_flyable": False,
+              "classname": "EpicsSignal",
+              "module": "ophyd.signal",
+            },
+            "gain_correction": {
+              "is_readable": True,
+              "is_movable": True,
+              "is_flyable": False,
+              "classname": "EpicsSignal",
+              "module": "ophyd.signal",
+            },
+          },
+        },
+      },
+    })

@@ -33,11 +33,12 @@ def no_auth_session_handler(http_server_uri):
 
 
 @pytest.fixture
-def ok_mock_api(respx_mock, http_server_uri, status_ok_mock_response, history_get_ok_mock_response):
+def ok_mock_api(respx_mock, http_server_uri, status_ok_mock_response, history_get_ok_mock_response, devices_get_ok_mock_response):
     respx_mock.clear()
 
     respx_mock.get(http_server_uri + "/api/status").mock(status_ok_mock_response)
     respx_mock.get(http_server_uri + "/api/history/get").mock(history_get_ok_mock_response)
+    respx_mock.get(http_server_uri + "/api/devices/allowed").mock(devices_get_ok_mock_response)
     respx_mock.post(http_server_uri + "/api/auth/logout").mock(httpx.Response(200, json={}))
 
     return respx_mock

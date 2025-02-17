@@ -128,3 +128,34 @@ def test_query_history_failed_plan_mock(capsys, ip, failed_plan_mock_api):
 
     assert "Plan failed: Failed to connect to <PV> within 30.00 sec" in captured.out, captured
     assert "Traceback (most recent call last):" in captured.out, captured
+
+
+def test_reload_devices_ok_mock(ip, ok_mock_api):
+    HTTPMagics.get_manager().devices_allowed(reload=True)
+    ip.run_magic("reload_devices", "")
+
+    devices = get_from_namespace(NamespaceKeys.DEVICES, ipython=ip)
+    assert isinstance(devices, set)
+
+    assert "a" in devices
+    assert "b" in devices
+
+
+def test_reload_devices_custom_renderer_ok_mock(ip, ok_mock_api):
+    def custom_renderer(inp):
+        return ["custom_" + x for x in inp.keys()]
+
+    old_renderer = ip.magics_manager.registry["HTTPMagics"].device_list_renderer
+    ip.magics_manager.registry["HTTPMagics"].device_list_renderer = custom_renderer
+
+    try:
+        HTTPMagics.get_manager().devices_allowed(reload=True)
+        ip.run_magic("reload_devices", "")
+
+        devices = get_from_namespace(NamespaceKeys.DEVICES, ipython=ip)
+        assert isinstance(devices, list)
+
+        assert "custom_a" in devices
+        assert "custom_b" in devices
+    finally:
+        ip.magics_manager.registry["HTTPMagics"].device_list_renderer = old_renderer
