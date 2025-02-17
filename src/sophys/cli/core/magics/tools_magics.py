@@ -137,10 +137,18 @@ class HTTPMagics(Magics):
                 ipython.register_magics(HTTPMagics)
                 ipython.magics_manager.registry["HTTPMagics"].additional_state = [my_custom_state]
                 ...
+        device_list_renderer : callable, optional
+            A callable accepting a dict of strings to object information as argument, and
+            returning a string or a printable object. The argument is the dict of allowed
+            devices on queueserver, and the result is the value of the 'D' variable in this client.
+
+            By default, it simply passes the list of devices to set().
         """
         super().__init__(*args, **kwargs)
 
         self._logger = logging.getLogger("sophys_cli.tools")
+
+        self.device_list_renderer = lambda x: set(x)
 
     @classmethod
     def get_manager(cls, local_ns=None, logger=None):
@@ -203,7 +211,7 @@ class HTTPMagics(Magics):
             self._logger.debug("Upstream allowed devices: %s", " ".join(res["devices_allowed"].keys()))
 
             # We need to modify the original one, not the 'local_ns', which is a copy.
-            get_ipython().push({"D": set(res["devices_allowed"])})
+            get_ipython().push({"D": self.device_list_renderer(res["devices_allowed"])})
 
     def _reload_plans(self, manager):
         res = manager.plans_allowed()
