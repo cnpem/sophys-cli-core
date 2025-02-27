@@ -110,15 +110,15 @@ def create_kafka_callback(RE, sophys_utils, logger, kafka_topic, bootstrap_serve
         RE.subscribe(make_kafka_callback(topic_names=[kafka_topic], bootstrap_servers=bootstrap_servers, backoff_times=[0.1, 1.0]))
 
         logger.info("Connected to the kafka broker successfully!")
-
-        # Kafka -> sophys-cli
-        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
     except (TypeError, NoBrokersAvailable):
         logger.info("Failed to connect to the kafka broker.")
 
         # Fallback: use everything local, even if `kbl` doesn't work.
         for callback in callbacks:
             RE.subscribe(callback)
+    else:
+        # Kafka -> sophys-cli
+        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
 
 
 def instantiate_devices(logger):
