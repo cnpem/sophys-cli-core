@@ -112,7 +112,7 @@ def create_kafka_callback(RE, sophys_utils, logger, kafka_topic, bootstrap_serve
         logger.info("Connected to the kafka broker successfully!")
 
         # Kafka -> sophys-cli
-        create_kafka_monitor(kafka_topic, callbacks)
+        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
     except (TypeError, NoBrokersAvailable):
         logger.info("Failed to connect to the kafka broker.")
 
