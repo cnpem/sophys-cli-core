@@ -43,6 +43,10 @@ all = [
 [project.scripts]
 sophys-cli = "sophys.cli.core.__main__:entrypoint"
 
+[project.entry-points.pytest11]
+sophys-cli-kernel-mock = "sophys.cli.core.test_utils.fixtures.kernel_mock"
+sophys-cli-http-mock = "sophys.cli.core.test_utils.fixtures.http_mock"
+
 [tool.setuptools_scm]
 version_file = "src/sophys/cli/core/__version__.py"
 
