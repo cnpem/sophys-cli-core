@@ -11,7 +11,7 @@ def test_instantiate_app(ip_with_params):
     assert get_from_namespace(NamespaceKeys.TEST_MODE, ipython=ip) is kernel_params[2]
     assert get_from_namespace(NamespaceKeys.DEBUG_MODE, ipython=ip) is kernel_params[3]
 
-    # Defined in pre_execution.py
+    # Defined in base_configuration.py
     from bluesky.callbacks.best_effort import BestEffortCallback
     assert isinstance(get_from_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, ipython=ip), BestEffortCallback)
 

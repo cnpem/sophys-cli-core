@@ -4,13 +4,7 @@ import importlib
 from sophys.cli.core.magics import NamespaceKeys, add_to_namespace, get_from_namespace
 
 
-# Appease LSPs and allow some use of the application with no extension.
-EXTENSION = globals().get("EXTENSION", None)
-if EXTENSION is None:
-    EXTENSION = "common"
-
-
-def create_bec():
+def create_bec(_globals):
     from bluesky.callbacks.best_effort import BestEffortCallback
 
     BEC = BestEffortCallback()
@@ -21,27 +15,27 @@ def create_bec():
     # FIXME: This impossibilitates using the graphical callbacks. Find out a better way.
     BEC_callback = functools.partial(BEC, escape=True)
 
-    add_to_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, BEC, _globals=globals())
+    add_to_namespace(NamespaceKeys.BEST_EFFORT_CALLBACK, BEC, _globals=_globals)
 
     return BEC, BEC_callback
 
 
-def create_callbacks():
+def create_callbacks(_globals):
     import databroker
 
     DB = databroker.Broker.named("temp")
-    add_to_namespace(NamespaceKeys.DATABROKER, DB, _globals=globals())
+    add_to_namespace(NamespaceKeys.DATABROKER, DB, _globals=_globals)
 
     def update_last_data(name, _):
         if name == "stop":
-            add_to_namespace(NamespaceKeys.LAST_DATA, DB[-1].table(), _globals=globals())
+            add_to_namespace(NamespaceKeys.LAST_DATA, DB[-1].table(), _globals=_globals)
 
-    BEC, BEC_callback = create_bec()
+    BEC, BEC_callback = create_bec(_globals)
 
     return [DB.v1.insert, update_last_data, BEC_callback]
 
 
-def create_run_engine():
+def create_run_engine(_globals):
     from bluesky import RunEngine
     from bluesky.utils import RunEngineInterrupted
 
@@ -66,25 +60,28 @@ def create_run_engine():
             return super().resume(*args, **kwargs)
 
     RE = RunEngineWithoutTracebackOnPause({})
-    add_to_namespace(NamespaceKeys.RUN_ENGINE, RE, _globals=globals())
+    add_to_namespace(NamespaceKeys.RUN_ENGINE, RE, _globals=_globals)
 
     return RE
 
 
-def create_kafka_parameters(default_topic_names, default_bootstrap_servers):
+def create_kafka_parameters(default_topic_names, default_bootstrap_servers, extension_name, _globals):
     kafka_topic = default_topic_names()[0]
-    if get_from_namespace(NamespaceKeys.TEST_MODE, False) and get_from_namespace(NamespaceKeys.LOCAL_MODE, False):
-        kafka_topic = kafka_topic.replace(EXTENSION, "test")
+
+    in_test_mode = get_from_namespace(NamespaceKeys.TEST_MODE, False, ns=_globals)
+    in_local_mode = get_from_namespace(NamespaceKeys.LOCAL_MODE, False, ns=_globals)
+    if in_test_mode and in_local_mode:
+        kafka_topic = kafka_topic.replace(extension_name, "test")
 
     bootstrap_servers = default_bootstrap_servers()
 
-    add_to_namespace(NamespaceKeys.KAFKA_BOOTSTRAP, bootstrap_servers, _globals=globals())
-    add_to_namespace(NamespaceKeys.KAFKA_TOPIC, kafka_topic, _globals=globals())
+    add_to_namespace(NamespaceKeys.KAFKA_BOOTSTRAP, bootstrap_servers, _globals=_globals)
+    add_to_namespace(NamespaceKeys.KAFKA_TOPIC, kafka_topic, _globals=_globals)
 
     return kafka_topic, bootstrap_servers
 
 
-def create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks):
+def create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks, _globals):
     from sophys.common.utils.kafka.monitor import ThreadedMonitor
 
     def __create_kafka_monitor(topic_name: str, bootstrap_servers: list[str], subscriptions: list[callable]):
@@ -96,18 +93,17 @@ def create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks):
         return monitor
 
     monitor = __create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
-    add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=globals())
+    add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=_globals)
 
 
-def create_kafka_callback(RE, sophys_utils, logger, kafka_topic, bootstrap_servers, callbacks):
+def create_kafka_callback(RE, kafka_callback_factory, logger, kafka_topic, bootstrap_servers, callbacks, _globals):
     from kafka.errors import NoBrokersAvailable
-    make_kafka_callback = sophys_utils.make_kafka_callback
 
     logger.info(f"Connecting to kafka... (IPs: {bootstrap_servers} | Topic: {kafka_topic})")
 
     try:
         # RE -> Kafka
-        RE.subscribe(make_kafka_callback(topic_names=[kafka_topic], bootstrap_servers=bootstrap_servers, backoff_times=[0.1, 1.0]))
+        RE.subscribe(kafka_callback_factory(topic_names=[kafka_topic], bootstrap_servers=bootstrap_servers, backoff_times=[0.1, 1.0]))
 
         logger.info("Connected to the kafka broker successfully!")
     except (TypeError, NoBrokersAvailable):
@@ -118,18 +114,18 @@ def create_kafka_callback(RE, sophys_utils, logger, kafka_topic, bootstrap_serve
             RE.subscribe(callback)
     else:
         # Kafka -> sophys-cli
-        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
+        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks, _globals)
 
 
-def instantiate_devices(logger):
+def instantiate_devices(logger, extension_name, _globals):
     from types import SimpleNamespace
 
-    sophys_devices = importlib.import_module(f"sophys.{EXTENSION}.devices")
+    sophys_devices = importlib.import_module(f"sophys.{extension_name}.devices")
     _instantiate_devices = getattr(sophys_devices, "instantiate_devices", None)
 
     if _instantiate_devices is None:
         D = SimpleNamespace()
-        add_to_namespace(NamespaceKeys.DEVICES, D, _globals=globals())
+        add_to_namespace(NamespaceKeys.DEVICES, D, _globals=_globals)
 
         return
 
@@ -146,41 +142,40 @@ def instantiate_devices(logger):
     D = StrSimpleNamespace(**_dev)
     logger.debug("Instantiation completed successfully!")
 
-    add_to_namespace(NamespaceKeys.DEVICES, D, _globals=globals())
+    add_to_namespace(NamespaceKeys.DEVICES, D, _globals=_globals)
 
     return _dev
 
 
-def execute_at_start():
-    if EXTENSION == "skip":
-        return
-
+def execute_at_start(extension_name, _globals):
     import logging
-
-    callbacks = create_callbacks()
-
-    sophys_utils = importlib.import_module(f"sophys.{EXTENSION}.utils")
-    default_topic_names = sophys_utils.default_topic_names
-    default_bootstrap_servers = sophys_utils.default_bootstrap_servers
-
-    kafka_topic, bootstrap_servers = create_kafka_parameters(default_topic_names, default_bootstrap_servers)
-
-    if not get_from_namespace(NamespaceKeys.LOCAL_MODE, False):
-        # Remote mode, only setup the monitor
-        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks)
-
-        return
 
     kafka_logger = logging.getLogger("kafka")
     sophys_logger = logging.getLogger("sophys_cli")
 
-    RE = create_run_engine()
+    if extension_name == "skip":
+        create_callbacks(_globals)
+
+        return
+
+    callbacks = create_callbacks(_globals)
+
+    sophys_utils = importlib.import_module(f"sophys.{extension_name}.utils")
+    default_topic_names = sophys_utils.default_topic_names
+    default_bootstrap_servers = sophys_utils.default_bootstrap_servers
+
+    kafka_topic, bootstrap_servers = create_kafka_parameters(default_topic_names, default_bootstrap_servers, extension_name, _globals)
+
+    if not get_from_namespace(NamespaceKeys.LOCAL_MODE, False, ns=_globals):
+        # Remote mode, only setup the monitor
+        create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks, _globals)
+
+        return
+
+    RE = create_run_engine(_globals)
 
     # Kafka callback
     # NOTE: This is needed even in the local setting so that `kbl` works even in this case.
-    create_kafka_callback(RE, sophys_utils, kafka_logger, kafka_topic, bootstrap_servers, callbacks)
+    create_kafka_callback(RE, sophys_utils, kafka_logger, kafka_topic, bootstrap_servers, callbacks, _globals)
 
-    instantiate_devices(sophys_logger)
-
-
-execute_at_start()
+    instantiate_devices(sophys_logger, extension_name, _globals)

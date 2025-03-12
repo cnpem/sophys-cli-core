@@ -117,7 +117,7 @@ def create_kernel(
         }
     }
 
-    ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "pre_execution.py")]
+    ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "_pre_execution.py")]
 
     ipy_config.InteractiveShell.banner2 = create_banner_text(in_local_mode)
 

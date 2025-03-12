@@ -34,7 +34,7 @@ def ipython_app(request, no_auth_session_handler):
     ip.push(kwargs["user_ns"])
 
     patch.object(IPython, "get_ipython", globalipapp.get_ipython)
-    code_obj = ip.find_user_code(str(Path(core.__file__).parent / "pre_execution.py"), py_only=True)
+    code_obj = ip.find_user_code(str(Path(core.__file__).parent / "_pre_execution.py"), py_only=True)
     asyncio.run(ip.run_code(code_obj))
 
     ip.register_magics(HTTPMagics)
