@@ -28,6 +28,7 @@ class NamespaceKeys(enum.StrEnum):
     REMOTE_DATA_SOURCE = "__data_source"
     RUN_ENGINE = "RE"
     TEST_MODE = "TEST_MODE"
+    TEST_DATA = "__test_data"
 
 
 def add_to_namespace(key: NamespaceKeys, value, ipython=None, _globals=None):

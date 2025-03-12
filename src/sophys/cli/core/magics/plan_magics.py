@@ -12,7 +12,7 @@ from IPython.core.magic import Magics, magics_class, record_magic, needs_local_s
 
 from sophys.common.utils.registry import find_all as registry_find_all
 
-from . import in_debug_mode, NamespaceKeys, get_from_namespace
+from . import in_debug_mode, NamespaceKeys, get_from_namespace, add_to_namespace
 
 try:
     from bluesky_queueserver_api.item import BPlan
@@ -24,6 +24,7 @@ except ImportError:
 class ModeOfOperation(IntEnum):
     Local = 0
     Remote = 1
+    Test = 2
 
 
 class ExceptionHandlerReturnValue(IntEnum):
@@ -106,6 +107,9 @@ class PlanCLI:
         """
         if self._mode_of_operation == ModeOfOperation.Local:
             return self.get_real_devices(device_names, local_ns)
+
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return device_names
 
         for device_name in device_names:
             if device_name not in get_from_namespace(NamespaceKeys.DEVICES, ns=local_ns):
@@ -279,6 +283,8 @@ class PlanMV(PlanCLI):
             return functools.partial(self._plan, *args, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
             return BPlan(self._plan.__name__, *args, md=md)
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return (self._plan, args, md)
 
 
 class PlanReadMany(PlanCLI):
@@ -298,6 +304,8 @@ class PlanReadMany(PlanCLI):
             return functools.partial(self._plan, devices, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
             return BPlan(self._plan.__name__, devices, md=md)
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return (self._plan, devices, md)
 
 
 class PlanCount(PlanCLI):
@@ -320,6 +328,8 @@ class PlanCount(PlanCLI):
             return functools.partial(self._plan, detectors, num=num, delay=delay, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
             return BPlan(self._plan_name, detectors, num=num, delay=delay, md=md)
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return (self._plan, detectors, num, delay, md)
 
 
 class PlanScan(PlanCLI):
@@ -343,6 +353,8 @@ class PlanScan(PlanCLI):
             return functools.partial(self._plan, detectors, *args, num=num, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
             return BPlan(self._plan_name, detectors, *args, num=num, md=md)
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return (self._plan, detectors, args, num, md)
 
 
 class PlanGridScan(PlanCLI):
@@ -367,6 +379,8 @@ class PlanGridScan(PlanCLI):
             return functools.partial(self._plan, detectors, *args, snake_axes=snake, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
             return BPlan(self._plan_name, detectors, *args, snake_axes=snake, md=md)
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return (self._plan, detectors, args, snake, md)
 
 
 class PlanAdaptiveScan(PlanCLI):
@@ -404,6 +418,8 @@ class PlanAdaptiveScan(PlanCLI):
             return functools.partial(self._plan, detectors, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold, md=md)
         if self._mode_of_operation == ModeOfOperation.Remote:
             return BPlan(self._plan_name, detectors, target_field=target_field, motor=motor, start=start, stop=stop, min_step=min_step, max_step=max_step, target_delta=target_delta, backstep=backstep, threshold=threshold, md=md)
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return (self._plan, detectors, target_field, motor, start, stop, min_step, max_step, target_delta, backstep, threshold, md)
 
 
 @magics_class
@@ -518,6 +534,9 @@ def register_magic_for_plan(
 
                     manager = handler.get_authorized_manager()
                     return _remote_mode_plan_execute(manager, plan, post_submission_callbacks)
+                if mode_of_operation == ModeOfOperation.Test:
+                    add_to_namespace(NamespaceKeys.TEST_DATA, plan)
+                    return
             except Exception as e:
                 if type(e) in exception_handlers:
                     match exception_handlers[type(e)](e, local_ns):
