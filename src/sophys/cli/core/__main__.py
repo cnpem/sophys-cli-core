@@ -68,8 +68,12 @@ def entrypoint():
     if args.profile:
         _prof.disable()
 
-        _prof.print_stats("cumtime")
-        _prof.dump_stats("prof.pstats")
+        import pstats
+        stats = pstats.Stats(_prof)
+        stats.sort_stats("cumtime")
+        stats.reverse_order()
+        stats.print_stats()
+        stats.dump_stats("prof.pstats")
 
 
 def create_kernel(
