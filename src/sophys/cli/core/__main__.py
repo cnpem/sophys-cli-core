@@ -54,10 +54,22 @@ def entrypoint():
     parser.add_argument("--local", help="Use a local RunEngine instead of communicating with HTTPServer (implies --test).", action="store_true")
     parser.add_argument("--test", help="Setup testing configurations to test the tool without interfering with production configured parameters.", action="store_true")
     parser.add_argument("--nocolor", help="Remove color codes from rich output.", action="store_true")
+    parser.add_argument("--profile", help="Profile the application using cProfile. Generates a prof.pstats file at exit.", action="store_true")
     args = parser.parse_args()
+
+    if args.profile:
+        import cProfile
+        _prof = cProfile.Profile()
+        _prof.enable()
 
     start_cls, kwargs = create_kernel(not args.nocolor, args.local, args.test, args.debug, start_command=args.command, interactive=args.interactive, extension_name=args.extension)
     start_cls(**kwargs)
+
+    if args.profile:
+        _prof.disable()
+
+        _prof.print_stats("cumtime")
+        _prof.dump_stats("prof.pstats")
 
 
 def create_kernel(
