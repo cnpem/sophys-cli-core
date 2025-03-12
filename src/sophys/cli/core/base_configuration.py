@@ -154,7 +154,7 @@ def execute_at_start(extension_name, _globals):
     sophys_logger = logging.getLogger("sophys_cli")
 
     if extension_name == "skip":
-        create_callbacks(_globals)
+        add_to_namespace(NamespaceKeys.TEST_DATA, "i was here", _globals=_globals)
 
         return
 
