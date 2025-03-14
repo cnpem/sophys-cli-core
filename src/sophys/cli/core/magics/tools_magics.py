@@ -329,6 +329,7 @@ class HTTPMagics(Magics):
         if not res["success"]:
             self._logger.warning("Failed to pause plan execution: %s", res["msg"])
         else:
+            print("Pausing...")
             manager.wait_for_idle_or_paused()
             print("Plan paused successfully.")
 
