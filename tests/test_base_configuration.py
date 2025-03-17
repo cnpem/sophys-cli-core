@@ -1,7 +1,9 @@
 import pytest
 
+import os
 import typing
 
+from sophys.cli.core import KAFKA_HOST_ENVVAR, KAFKA_PORT_ENVVAR, KAFKA_TOPIC_ENVVAR
 from sophys.cli.core.magics import NamespaceKeys, get_from_namespace, add_to_namespace
 from sophys.cli.core.base_configuration import create_bec, create_callbacks, create_run_engine, create_kafka_parameters
 
@@ -45,16 +47,20 @@ def test_create_run_engine():
     assert isinstance(RE, RunEngine)
 
 
-def test_create_kafka_parameters():
+def test_create_kafka_parameters(monkeypatch):
     _globals = {}
 
-    def default_kafka_topics(): return ["skip_bluesky_documents", "not_used"]
-    def default_bootstrap_servers(): return ["1.2.3.4:1234", "5.6.7.8:5678"]
+    monkeypatch.setenv(KAFKA_HOST_ENVVAR, "1.2.3.4")
+    monkeypatch.setenv(KAFKA_PORT_ENVVAR, "1234")
+    monkeypatch.setenv(KAFKA_TOPIC_ENVVAR, "skip_bluesky_documents")
 
-    topic_name, bootstrap_servers = create_kafka_parameters(default_kafka_topics, default_bootstrap_servers, "skip", _globals)
+    original_topic_name = os.environ[KAFKA_TOPIC_ENVVAR]
+    original_bootstrap_servers = [f"{os.environ[KAFKA_HOST_ENVVAR]}:{os.environ[KAFKA_PORT_ENVVAR]}"]
 
-    assert topic_name == default_kafka_topics()[0]
-    assert bootstrap_servers == default_bootstrap_servers()
+    topic_name, bootstrap_servers = create_kafka_parameters("skip", _globals)
+
+    assert topic_name == original_topic_name
+    assert bootstrap_servers == original_bootstrap_servers
 
     assert get_from_namespace(NamespaceKeys.KAFKA_TOPIC, ns=_globals) == topic_name
     assert get_from_namespace(NamespaceKeys.KAFKA_BOOTSTRAP, ns=_globals) == bootstrap_servers
@@ -62,10 +68,10 @@ def test_create_kafka_parameters():
     add_to_namespace(NamespaceKeys.TEST_MODE, True, _globals=_globals)
     add_to_namespace(NamespaceKeys.LOCAL_MODE, True, _globals=_globals)
 
-    topic_name, bootstrap_servers = create_kafka_parameters(default_kafka_topics, default_bootstrap_servers, "skip", _globals)
+    topic_name, bootstrap_servers = create_kafka_parameters("skip", _globals)
 
-    assert topic_name == default_kafka_topics()[0].replace("skip", "test")
-    assert bootstrap_servers == default_bootstrap_servers()
+    assert topic_name == original_topic_name.replace("skip", "test")
+    assert bootstrap_servers == original_bootstrap_servers
 
     assert get_from_namespace(NamespaceKeys.KAFKA_TOPIC, ns=_globals) == topic_name
     assert get_from_namespace(NamespaceKeys.KAFKA_BOOTSTRAP, ns=_globals) == bootstrap_servers

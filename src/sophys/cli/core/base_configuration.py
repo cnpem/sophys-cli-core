@@ -1,6 +1,7 @@
 import functools
 import importlib
 
+from sophys.cli.core import ENVVARS
 from sophys.cli.core.magics import NamespaceKeys, add_to_namespace, get_from_namespace
 
 
@@ -65,15 +66,14 @@ def create_run_engine(_globals):
     return RE
 
 
-def create_kafka_parameters(default_topic_names, default_bootstrap_servers, extension_name, _globals):
-    kafka_topic = default_topic_names()[0]
+def create_kafka_parameters(extension_name, _globals):
+    kafka_topic = ENVVARS.KAFKA_TOPIC
+    bootstrap_servers = [f"{ENVVARS.KAFKA_HOST}:{ENVVARS.KAFKA_PORT}"]
 
     in_test_mode = get_from_namespace(NamespaceKeys.TEST_MODE, False, ns=_globals)
     in_local_mode = get_from_namespace(NamespaceKeys.LOCAL_MODE, False, ns=_globals)
     if in_test_mode and in_local_mode:
         kafka_topic = kafka_topic.replace(extension_name, "test")
-
-    bootstrap_servers = default_bootstrap_servers()
 
     add_to_namespace(NamespaceKeys.KAFKA_BOOTSTRAP, bootstrap_servers, _globals=_globals)
     add_to_namespace(NamespaceKeys.KAFKA_TOPIC, kafka_topic, _globals=_globals)
@@ -96,14 +96,15 @@ def create_kafka_monitor(kafka_topic, bootstrap_servers, callbacks, _globals):
     add_to_namespace(NamespaceKeys.KAFKA_MONITOR, monitor, _globals=_globals)
 
 
-def create_kafka_callback(RE, kafka_callback_factory, logger, kafka_topic, bootstrap_servers, callbacks, _globals):
+def create_kafka_callback(RE, logger, kafka_topic, bootstrap_servers, callbacks, _globals):
     from kafka.errors import NoBrokersAvailable
+    from sophys.common.utils.kafka import make_kafka_callback
 
     logger.info(f"Connecting to kafka... (IPs: {bootstrap_servers} | Topic: {kafka_topic})")
 
     try:
         # RE -> Kafka
-        RE.subscribe(kafka_callback_factory(topic_names=[kafka_topic], bootstrap_servers=bootstrap_servers, backoff_times=[0.1, 1.0]))
+        RE.subscribe(make_kafka_callback(topic_names=[kafka_topic], bootstrap_servers=bootstrap_servers, backoff_times=[0.1, 1.0]))
 
         logger.info("Connected to the kafka broker successfully!")
     except (TypeError, NoBrokersAvailable):
@@ -160,11 +161,7 @@ def execute_at_start(extension_name, _globals):
 
     callbacks = create_callbacks(_globals)
 
-    sophys_utils = importlib.import_module(f"sophys.{extension_name}.utils")
-    default_topic_names = sophys_utils.default_topic_names
-    default_bootstrap_servers = sophys_utils.default_bootstrap_servers
-
-    kafka_topic, bootstrap_servers = create_kafka_parameters(default_topic_names, default_bootstrap_servers, extension_name, _globals)
+    kafka_topic, bootstrap_servers = create_kafka_parameters(extension_name, _globals)
 
     if not get_from_namespace(NamespaceKeys.LOCAL_MODE, False, ns=_globals):
         # Remote mode, only setup the monitor
@@ -176,6 +173,6 @@ def execute_at_start(extension_name, _globals):
 
     # Kafka callback
     # NOTE: This is needed even in the local setting so that `kbl` works even in this case.
-    create_kafka_callback(RE, sophys_utils, kafka_logger, kafka_topic, bootstrap_servers, callbacks, _globals)
+    create_kafka_callback(RE, kafka_logger, kafka_topic, bootstrap_servers, callbacks, _globals)
 
     instantiate_devices(sophys_logger, extension_name, _globals)
