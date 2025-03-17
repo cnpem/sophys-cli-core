@@ -1,7 +1,5 @@
 import logging
 
-from types import SimpleNamespace
-
 BANNER_NAME_EXTEND = 20  # This many space between the name and the ':'.
 
 AUTOSAVE_HOST_ENVVAR = "CLI_AUTOSAVE_HOST_ADDRESS"
@@ -36,13 +34,21 @@ def get_cli_envvar(envvar_name: str) -> str:
     return globals().get(envvar_name + "_DEF", "NO_DEFAULT")
 
 
-ENVVARS = SimpleNamespace()
-ENVVARS.AUTOSAVE_HOST_ENVVAR = AUTOSAVE_HOST_ENVVAR
-ENVVARS.AUTOSAVE_PORT_ENVVAR = AUTOSAVE_PORT_ENVVAR
-ENVVARS.REDIS_HOST_ENVVAR = REDIS_HOST_ENVVAR
-ENVVARS.REDIS_PORT_ENVVAR = REDIS_PORT_ENVVAR
-ENVVARS.HTTPSERVER_HOST_ENVVAR = HTTPSERVER_HOST_ENVVAR
-ENVVARS.HTTPSERVER_PORT_ENVVAR = HTTPSERVER_PORT_ENVVAR
-ENVVARS.KAFKA_HOST_ENVVAR = KAFKA_HOST_ENVVAR
-ENVVARS.KAFKA_PORT_ENVVAR = KAFKA_PORT_ENVVAR
-ENVVARS.KAFKA_TOPIC_ENVVAR = KAFKA_TOPIC_ENVVAR
+class EnvironmentVariables:
+    # NOTE: These are for autocomplete purposes.
+    AUTOSAVE_HOST = None
+    AUTOSAVE_PORT = None
+    REDIS_HOST = None
+    REDIS_PORT = None
+    HTTPSERVER_HOST = None
+    HTTPSERVER_PORT = None
+    KAFKA_HOST = None
+    KAFKA_PORT = None
+    KAFKA_TOPIC = None
+
+    def __getattribute__(self, name):
+        var_name = name + "_ENVVAR"
+        return get_cli_envvar(globals().get(var_name, var_name))
+
+
+ENVVARS = EnvironmentVariables()
