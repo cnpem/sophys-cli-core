@@ -110,6 +110,22 @@ def render_custom_magics(ipython, consider_blacklist: bool = True):
 
 
 def setup_remote_session_handler(ipython, address: str, *, disable_authentication: bool = False):
+    """
+    Properly configure the manager for remote session tokens.
+
+    This will also immediately ask for user credentials for authentication, if it
+    is enabled, and will update the local cache of devices and plan names upon
+    successful connection and authentication.
+
+    Parameters
+    ----------
+    address : str
+        The HTTP address of httpserver we're connecting to.
+    disable_authentication : bool, optional
+        Controls whether we'll ask user credentials and keep session tokens on
+        HTTP requests. This will only work properly if httpserver is configured for that.
+        Disabled by default.
+    """
     _remote_session_handler = RemoteSessionHandler(address, disable_authentication=disable_authentication)
     _remote_session_handler.start()
 
@@ -133,6 +149,36 @@ def setup_plan_magics(
         post_submission_callbacks: list[callable] | None = None,
         exception_handlers: dict[type(Exception), callable] | None = None,
         ):
+    """
+    Configure plan magics for the application.
+
+    Parameters
+    ----------
+    ipython : InteractiveShellApp
+        The IPython instance of this application.
+    sophys_name : str
+        Name of this extension, as its shorthand (i.e. xyz in sophys-xyz).
+    plan_whitelist : PlanWhitelist
+        Whitelist object of plans allowed to be created magics for, and their
+        configurations.
+    mode_of_operation : ModeOfOperation
+        Whether we're in local or remote mode.
+    post_submission_callbacks : list of callables, optional
+        Functions to call right after submitting a plan successfully. This
+        allows us to provide custom feedback and additional behavior to the
+        user.
+
+        These callables can also return a boolean indicating whether the
+        submission actually failed or was successful.
+    exception_handler : dict of Exception types to callables, optional
+        Functions to call when different exceptions are raised by the plan
+        submission code. This can handle errors in a way specific to the
+        environment being used.
+
+        The callbacks receive the original exception object, and the local
+        namespace, and return an object of ExceptionHandlerReturnValue
+        indicating how to proceed.
+    """
     from .plan_magics import register_magic_for_plan, get_plans, RealMagics
 
     if post_submission_callbacks is None:
