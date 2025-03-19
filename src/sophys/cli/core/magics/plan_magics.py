@@ -428,6 +428,27 @@ class RealMagics(Magics):
 
 
 class PlanInformation(BaseModel):
+    """
+    Container for instantiation information about a plan magic.
+
+    Attributes
+    ----------
+    plan_name : str
+        The original plan name, as it is defined by the source packages.
+    user_name : str
+        The name that will be used as the magic in sophys-cli.
+        It doesn't need to be equal to plan_name.
+    plan_class : PlanCLI subclass
+        The class defining the magic interface and behavior.
+    extra_props : dict
+        Additional properties to configure on the 'plan_class' instantiated
+        object. Currently the following keys have meaning:
+
+        pre_processing_md: Callables to do additional processing on the
+        'md' field, before submitting it. See the PlanCLI documentation
+        for more information on that.
+    """
+
     plan_name: str
     user_name: str
     plan_class: object
@@ -437,8 +458,43 @@ class PlanInformation(BaseModel):
         super().__init__(plan_name=plan_name, user_name=user_name, plan_class=plan_class, extra_props=kwargs)
 
     def apply_to_plan(self, plan_obj: PlanCLI):
+        """Apply 'extra_props' defined properties into the instantiated object."""
         if "pre_processing_md" in self.extra_props:
             plan_obj.pre_processing_md = self.extra_props["pre_processing_md"]
+
+
+class PlanWhitelist(list[PlanInformation]):
+    """
+    Container for instantiation information about an extension's plan magics.
+
+    Parameters
+    ----------
+    *infos : list of PlanInformation
+        A list of PlanInformation instances describing all the plan magics to
+        instantiate.
+    **general_extra_props : dict
+        A relation of additional properties to apply to all PlanInformation
+        objects. It directly updates the PlanInformation's 'extra_props' fields.
+    """
+
+    def __init__(self, *infos, **general_extra_props):
+        super().__init__(infos)
+
+        for plan_info in self:
+            plan_info.extra_props.update(general_extra_props)
+
+    def find_by_plan_name(self, plan_name: str):
+        return filter(lambda pi: pi.plan_name == plan_name, self)
+
+    def __contains__(self, o):
+        if isinstance(o, str):
+            return any(plan_information.plan_name == o for plan_information in self)
+        return super().__contains__(o)
+
+    def __and__(self, o):
+        if isinstance(o, set):
+            return {pi.user_name for pi in self if pi.plan_name in o}
+        return super().__and__(o)
 
 
 def _local_mode_plan_execute(RE, plan, post_submission_callbacks):
@@ -562,27 +618,6 @@ def register_magic_for_plan(
                 return
 
     record_magic(RealMagics.magics, "line", plan_info.user_name, __inner)
-
-
-class PlanWhitelist(list[PlanInformation]):
-    def __init__(self, *infos, **general_extra_props):
-        super().__init__(infos)
-
-        for plan_info in self:
-            plan_info.extra_props.update(general_extra_props)
-
-    def find_by_plan_name(self, plan_name: str):
-        return filter(lambda pi: pi.plan_name == plan_name, self)
-
-    def __contains__(self, o):
-        if isinstance(o, str):
-            return any(plan_information.plan_name == o for plan_information in self)
-        return super().__contains__(o)
-
-    def __and__(self, o):
-        if isinstance(o, set):
-            return {pi.user_name for pi in self if pi.plan_name in o}
-        return super().__and__(o)
 
 
 def get_plans(beamline: str, plan_whitelist: PlanWhitelist):
