@@ -289,6 +289,9 @@ class PlanInformation(BaseModel):
         pre_processing_md: Callables to do additional processing on the
         'md' field, before submitting it. See the PlanCLI documentation
         for more information on that.
+
+        Other keys can be attributed meaning and used by extensions too,
+        in case they want to modify some behavior at this level.
     """
 
     plan_name: str
