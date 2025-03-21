@@ -1,7 +1,6 @@
 import typing
 
 from argparse import ArgumentParser
-from pathlib import Path
 
 from traitlets.config import Config
 
@@ -121,12 +120,11 @@ def create_kernel(
         }
     }
 
-    ipy_config.InteractiveShellApp.exec_files = [str(Path(__file__).parent / "_pre_execution.py")]
-
     ipy_config.InteractiveShell.banner2 = create_banner_text(in_local_mode)
 
+    ipy_config.InteractiveShellApp.extensions = ["sophys.cli.core.base_configuration"]
     if extension_name not in (None, "skip"):
-        ipy_config.InteractiveShellApp.extensions = [f"sophys.cli.extensions.{extension_name}"]
+        ipy_config.InteractiveShellApp.extensions.append(f"sophys.cli.extensions.{extension_name}")
 
     ipy_config.TerminalInteractiveShell.confirm_exit = False
 
@@ -143,7 +141,7 @@ def create_kernel(
 
     init_ns = {}
     init_ns.update({
-        "EXTENSION": extension_name,
+        NamespaceKeys.EXTENSION_NAME: extension_name,
         NamespaceKeys.DEBUG_MODE: debug_mode,
         NamespaceKeys.LOCAL_MODE: in_local_mode,
         NamespaceKeys.TEST_MODE: in_test_mode,

@@ -123,20 +123,20 @@ All begins in the [generated entrypoint](https://github.com/cnpem/sophys-cli-cor
 
 From there, we go to the [`__main__`](./src/sophys/cli/core/__main__.py) file, where we find the entrypoint function. There, the first thing done is establishing the available flags and arguments for the program, using `argparse`.
 
-Right after that, we make a call to the `create_kernel` function, whose purpose is to configure the IPython kernel we'll be using. Here is where we'll hook up the code to be executed later to properly configure our environment and extensions, via configuration of the `exec_files` and `extensions` properties.
+Right after that, we make a call to the `create_kernel` function, whose purpose is to configure the IPython kernel we'll be using. Here is where we'll hook up the code to be executed later to properly configure our environment and extensions, via configuration of the `extensions` property.
 
 This is a separate function because we [customize the kernel in testing](https://github.com/cnpem/sophys-cli-core/blob/678f686aea1c41f686c34792c7c344f5f10550fe/src/sophys/cli/core/test_utils/fixtures/kernel_mock.py#L30) in order to have an easier time with IPython internals.
 
 Then we start the IPython kernel.
 
-##### `_pre_execution.py` / `base_configuration.py`
+##### `base_configuration.py`
 
-From here, the file configured earlier at `exec_files` in executed first. This will be the [`_pre_execution.py`](./src/sophys/cli/core/_pre_execution.py) file, responsible for triggering the configuration of all basic functionality of `sophys-cli` applications. This will call `execute_at_start`, contained in [`base_configuration.py`](./src/sophys/cli/core/base_configuration.py), which will instantiate callbacks, monitors, devices, and other useful bits, depending on the mode of operation configured via the CLI interface (`local` or `remote` (default)).
+From here, the core extension for sophys-cli is executed first. This will be defined in the [`base_configuration.py`](./src/sophys/cli/core/base_configuration.py) file, responsible for triggering the configuration of all basic functionality of `sophys-cli` applications. The executed function, `load_ipython_extension`, will call `execute_at_start`, which will instantiate callbacks, monitors, devices, and other useful bits, depending on the mode of operation configured via the CLI interface (`local` or `remote` (default)).
 
 The instantiated functions and objects are kept in the global IPython scope for later use and retrieval. This is done via the helper functions `get_from_namespace` and `add_to_namespace`, to make keeping track of these items easier. The global scope is later propagated to extensions via the `ipython` object.
 
 ##### Extensions
 
-With that execution concluded, the extensions configured earlier in the `extensions` IPython property will be loaded. This means they'll execute their `load_ipython_extension` function. See the [Creating your own extension](#creating-your-own-extension) section for more details on that.
+With that execution concluded, the other extensions configured earlier in the `extensions` IPython property will be loaded. This means they'll execute their `load_ipython_extension` function too. See the [Creating your own extension](#creating-your-own-extension) section for more details on that.
 
 This concludes our little tour! ^.^

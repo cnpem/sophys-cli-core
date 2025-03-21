@@ -176,3 +176,10 @@ def execute_at_start(extension_name, _globals):
     create_kafka_callback(RE, kafka_logger, kafka_topic, bootstrap_servers, callbacks, _globals)
 
     instantiate_devices(sophys_logger, extension_name, _globals)
+
+
+def load_ipython_extension(ipython):
+    extension_name = get_from_namespace(NamespaceKeys.EXTENSION_NAME, ipython=ipython)
+
+    _globals = ipython.user_ns  # Modified by reference
+    execute_at_start(extension_name, _globals)
