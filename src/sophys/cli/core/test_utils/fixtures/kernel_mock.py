@@ -47,8 +47,8 @@ def ip_with_params(ipython_app) -> tuple[TerminalInteractiveShell, tuple]:
 @pytest.fixture(scope="function")
 def ip(ipython_app) -> TerminalInteractiveShell:
     def run_magic(magic_name, line):
-        locals().update(ip.user_ns)
-        ip.run_line_magic(magic_name, line)
+        ns = {**locals(), **ip.user_ns}
+        exec("ip.run_line_magic(magic_name, line)", globals(), ns)
 
     ip = ipython_app[0]
     ip.run_magic = run_magic
