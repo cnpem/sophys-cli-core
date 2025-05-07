@@ -449,7 +449,7 @@ class HTTPMagics(Magics):
                     title_color = get_color("\x1b[48;5;0m\x1b[38;5;204m")
 
                 render = [title_color + f"=-- Entry #{index}: Plan --=" + get_color("\033[0m")]
-                render.append(f" Plan name: {item["name"]}")
+                render.append( " Plan name: " + item["name"])
                 render.append( " Arguments")  # noqa: E201
 
                 args = ", ".join(str(i) for i in item["args"])
@@ -460,13 +460,13 @@ class HTTPMagics(Magics):
                     render.append(f"   kwargs: {kwargs}")
 
                 render.append( " Run metadata")  # noqa: E201
-                render.append(f"   User: {item["user"]}")
-                render.append(f"   User group: {item["user_group"]}")
+                render.append( "   User: " + item["user"])
+                render.append( "   User group: " + item["user_group"])
 
                 render.append( " Run result")  # noqa: E201
                 result = item["result"]
 
-                render.append(f"   Exit status: {result["exit_status"]}")
+                render.append( "   Exit status: " + result["exit_status"])
 
                 from time import strftime, localtime
                 time_format = "%H:%M:%S (%d/%m/%Y)"
