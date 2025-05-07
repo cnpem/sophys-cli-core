@@ -90,7 +90,8 @@ def render_custom_magics(ipython, consider_blacklist: bool = True):
                     render.append(f"{name:<{BANNER_NAME_EXTEND}}: {desc}")
                 elif len(desc_item) == 3:
                     color = desc_item[2]
-                    render.append(f"{color}{name:<{BANNER_NAME_EXTEND}}: {desc}{get_color('\033[0m')}")
+                    reset_color = get_color("\033[0m")
+                    render.append(f"{color}{name:<{BANNER_NAME_EXTEND}}: {desc}{reset_color}")
 
     # Add extra spacing between commands of different colors
     from itertools import pairwise
