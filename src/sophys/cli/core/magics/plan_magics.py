@@ -13,10 +13,8 @@ from sophys.common.utils.registry import find_all as registry_find_all
 
 from . import in_debug_mode, NamespaceKeys, get_from_namespace, add_to_namespace
 
-try:
-    remote_control_available = True
-except ImportError:
-    remote_control_available = False
+
+remote_control_available = importlib.util.find_spec("bluesky_queueserver_api") is not None
 
 
 class ModeOfOperation(IntEnum):
