@@ -1,4 +1,4 @@
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from argparse import ArgumentParser, RawDescriptionHelpFormatter, SUPPRESS
 from enum import IntEnum
 from typing import Annotated
 
@@ -43,6 +43,8 @@ class PlanCLI:
         This represents a collection of pre-processing steps to apply to metadata
         before passing it to the plan. The functions have the following signature:
             (*devices in usage by the plan, metadata dict) -> updated metadata dict
+    hide_args : set of str
+        Set of argument names defined in `create_parser` that should be hidden.
     """
 
     def __init__(self, user_plan_name: str, plan_name: str, plan, mode_of_operation: ModeOfOperation):
@@ -55,6 +57,7 @@ class PlanCLI:
         self._sent_help_message = False
 
         self.pre_processing_md = []
+        self.hide_args = set()
 
     def get_real_devices(self, device_names: list[str], local_ns):
         """
@@ -226,8 +229,11 @@ If none of the mentioned worked, it is probably a bug. In this case, please cont
         )
         _a.exit = _on_exit_override
 
-        _a.add_argument("-d", "--detectors", nargs='*', type=str, required=False, default=[])
-        _a.add_argument("--md", nargs="*", action="append")
+        def help_msg(arg_name):
+            return SUPPRESS if arg_name in self.hide_args else None
+
+        _a.add_argument("-d", "--detectors", nargs='*', type=str, required=False, default=[], help=help_msg("detectors"))
+        _a.add_argument("--md", nargs="*", action="append", help=help_msg("md"))
 
         return _a
 
@@ -288,6 +294,9 @@ class PlanInformation(BaseModel):
         'md' field, before submitting it. See the PlanCLI documentation
         for more information on that.
 
+        hide_args: set of strings with names of arguments from the base
+        `create_parser` from PlanCLI to hide in the help page.
+
         Other keys can be attributed meaning and used by extensions too,
         in case they want to modify some behavior at this level.
     """
@@ -304,6 +313,8 @@ class PlanInformation(BaseModel):
         """Apply 'extra_props' defined properties into the instantiated object."""
         if "pre_processing_md" in self.extra_props:
             plan_obj.pre_processing_md = self.extra_props["pre_processing_md"]
+        if "hide_args" in self.extra_props:
+            plan_obj.hide_args = self.extra_props["hide_args"]
 
 
 class PlanWhitelist(list[PlanInformation]):
