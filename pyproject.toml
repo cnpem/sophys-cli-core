@@ -19,7 +19,7 @@ dynamic = ["version"]
 dependencies = [
   "setuptools",
   "ipython",
-  "kafka-python-ng",
+  "kafka-python",
   "bluesky[plotting]",
   "ophyd",
   "sophys-common>=3.1.0",
