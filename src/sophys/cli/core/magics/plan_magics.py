@@ -142,6 +142,13 @@ If none of the mentioned worked, it is probably a bug. In this case, please cont
             def __init__(self, device_name: str, position: float, **kwargs):
                 super().__init__(device_name=device_name, position=position, **kwargs)
 
+        class ListScanModel(BaseModel):
+            motor_name: Annotated[str, "device"]
+            position_list: tuple[float, ...]
+
+            def __init__(self, motor_name: str, position_list: tuple[float], **kwargs):
+                super().__init__(motor_name=motor_name, position_list=position_list, **kwargs)
+
         class ReadModel(BaseModel):
             device_name: Annotated[str, "device"]
 
@@ -166,7 +173,7 @@ If none of the mentioned worked, it is probably a bug. In this case, please cont
                 super().__init__(motor_name=motor_name, start=start, stop=stop, number=number, **kwargs)
 
         __VARARGS_VALIDATION = [
-            (4, GridScanModel), (3, ScanModel), (2, MvModel), (1, ReadModel)
+            (4, GridScanModel), (3, ScanModel), (2, MvModel), (2, ListScanModel), (1, ReadModel)
         ]
 
         true_n_args, true_cls = None, None
