@@ -381,7 +381,7 @@ def _remote_mode_plan_execute(manager, plan, post_submission_callbacks):
     if response["success"]:
         finish_msg = "Plan has been submitted successfully!"
     else:
-        finish_msg = f"Failed to submit plan to the remote server! Reason: {response["msg"]}"
+        finish_msg = f"Failed to submit plan to the remote server! Reason: {response['msg']}"
 
     post_submission_success = True
     for sub_cb in post_submission_callbacks:
