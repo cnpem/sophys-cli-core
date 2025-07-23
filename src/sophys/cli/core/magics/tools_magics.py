@@ -440,12 +440,20 @@ class HTTPMagics(Magics):
     @line_magic
     @needs_local_scope
     def query_history(self, line, local_ns):
+        render_failed_only = "failed" in line
+
         def pretty_render_history_item(item: dict, index: int = 0) -> str:
             item_type = item["item_type"]
 
             if item_type == "plan":
+                item_msg = item["result"]["msg"]
+                is_failed = len(item_msg) != 0
+
+                if not is_failed and render_failed_only:
+                    return None
+
                 title_color = get_color("\x1b[48;5;16m\x1b[38;5;85m")
-                if len(item["result"]["msg"]) != 0:
+                if is_failed:
                     title_color = get_color("\x1b[48;5;0m\x1b[38;5;204m")
 
                 render = [title_color + f"=-- Entry #{index}: Plan --=" + get_color("\033[0m")]
@@ -483,8 +491,8 @@ class HTTPMagics(Magics):
                     scan_ids = " ".join(str(i) for i in result["scan_ids"])
                     render.append(f"   Scan IDs: {scan_ids}")
 
-                if len(msg := result["msg"]) != 0:
-                    render.append(f"   Exit message: {msg}")
+                if is_failed:
+                    render.append(f"   Exit message: {item_msg}")
                     traceback = "\n      ".join(result["traceback"].split("\n"))
                     render.append(f"   Traceback:\n      {traceback}")
 
@@ -501,7 +509,11 @@ class HTTPMagics(Magics):
         from IPython.core import page
         render = "queueserver history - More recent entries are at the top.\n"
         render += "  Press 'q' to exit this view.\n\n\n"
-        render += "\n\n\n".join(pretty_render_history_item(item, i) for i, item in history_items)
+
+        pretty_render_history_items = tuple(
+            pretty_render_history_item(item, i) for i, item in history_items
+        )
+        render += "\n\n\n".join(x for x in pretty_render_history_items if x is not None)
 
         @contextmanager
         def disabled_bec():
@@ -542,7 +554,7 @@ class HTTPMagics(Magics):
         tools.append(("stop", "Request the currently executing or paused plan to stop and quit execution.", get_color("\x1b[38;5;204m")))
         tools.append(("", ""))
         tools.append(("query_state", "Query the current server state.", get_color("\x1b[38;5;69m")))
-        tools.append(("query_history", "Query the current item history, with their statuses.", get_color("\x1b[38;5;69m")))
+        tools.append(("query_history", "Query the current item history, with their statuses (use the 'failed' argument to only see the failed plans).", get_color("\x1b[38;5;69m")))
         tools.append(("", ""))
         tools.append(("reload_devices", "Reload the available devices list (D).", get_color("\x1b[38;5;222m")))
         tools.append(("reload_plans", "Reload the available plans list (P).", get_color("\x1b[38;5;222m")))
