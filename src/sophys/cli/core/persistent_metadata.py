@@ -12,7 +12,8 @@ class PersistentMetadata:
         if key in self._keys:
             self.remove_entry(key)
 
-        composed_key = f"{str(key)}={str(value).strip("\'\" ")}"
+        value = str(value).strip("\'\" ")
+        composed_key = f"{str(key)}={value}"
         self._keys[key] = composed_key
         self._data_source.add(DataSource.DataType.METADATA, composed_key)
 
