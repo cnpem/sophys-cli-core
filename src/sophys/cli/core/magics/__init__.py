@@ -111,6 +111,16 @@ def render_custom_magics(ipython, consider_blacklist: bool = True):
     return render
 
 
+def pretty_print_exception(exc: BaseException, local_ns):
+    """Pretty-print an Exception's traceback based on the current configuration."""
+    debug_mode = in_debug_mode(local_ns)
+    limit = None if debug_mode else 1
+
+    import traceback
+    tb = [i.split("\n") for i in traceback.format_exception(TypeError, exc, exc.__traceback__, limit=limit, chain=False)]
+    print("\n".join(f"*** {i}" for item in tb for i in item))
+
+
 def setup_remote_session_handler(ipython, address: str, *, disable_authentication: bool = False):
     """
     Properly configure the manager for remote session tokens.

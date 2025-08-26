@@ -11,7 +11,7 @@ from IPython.core.magic import Magics, magics_class, record_magic, needs_local_s
 
 from sophys.common.utils.registry import find_all as registry_find_all
 
-from . import in_debug_mode, NamespaceKeys, get_from_namespace, add_to_namespace
+from . import in_debug_mode, pretty_print_exception, NamespaceKeys, get_from_namespace, add_to_namespace
 
 
 remote_control_available = importlib.util.find_spec("bluesky_queueserver_api") is not None
@@ -469,12 +469,7 @@ def register_magic_for_plan(
                 print("Reason:")
                 print()
 
-                debug_mode = in_debug_mode(local_ns)
-                limit = None if debug_mode else 1
-
-                import traceback
-                tb = [i.split("\n") for i in traceback.format_exception(TypeError, e, e.__traceback__, limit=limit, chain=False)]
-                print("\n".join(f"*** {i}" for item in tb for i in item))
+                pretty_print_exception(e, local_ns)
 
                 return
 
