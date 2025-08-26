@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 import typing
 
@@ -258,7 +259,14 @@ class HTTPMagics(Magics):
             print()
             print("Leaving the waiting prompt without waiting for stop command to finish.")
 
-        with handle_ctrl_c_signals({1: first_time_callback, 10: last_time_callback}, ignore_original_handler=True):
+        ignore_original_handler = not os.environ.get("_SOPHYS_IN_SCRIPT", False)
+        max_signal_count = 9 if ignore_original_handler else 0
+
+        with handle_ctrl_c_signals(
+            {1: first_time_callback, 10: last_time_callback},
+            max_signal_count=max_signal_count,
+            ignore_original_handler=ignore_original_handler
+        ):
             manager.wait_for_idle()
 
         if not tried_to_stop:

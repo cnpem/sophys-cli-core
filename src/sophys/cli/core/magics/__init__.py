@@ -204,6 +204,11 @@ def setup_plan_magics(
     ipython.register_magics(RealMagics)
 
 
+class NoTracebackException(BaseException):
+    def _render_traceback_(self):
+        return []
+
+
 @contextmanager
 def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int = 9, ignore_original_handler: bool = False):
     """
@@ -263,5 +268,8 @@ def handle_ctrl_c_signals(callbacks: dict | None = None, max_signal_count: int =
     else:
         try:
             yield
+        except KeyboardInterrupt as e:
+            print("Plans from loaded file have been stopped successfully.")
+            raise NoTracebackException
         finally:
             _release()
