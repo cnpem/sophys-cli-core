@@ -105,10 +105,21 @@ class MiscMagics(Magics):
             print(f"Removing entry '{key}'.")
             persistent_metadata.remove_entry(key)
 
+    @line_magic
+    def begin(self, line):
+        os.environ["_SOPHYS_IN_SCRIPT"] = "True"
+
+    @line_magic
+    def end(self, line):
+        os.environ["_SOPHYS_IN_SCRIPT"] = "False"
+
     @staticmethod
     def description():
         tools = []
         tools.append(("cs", "Print this help page, with all custom functionality summarized."))
+        tools.append(("", ""))
+        tools.append(("begin", "Mark the beginning of a script execution.", get_color("\x1b[38;5;223m")))
+        tools.append(("end", "Mark the end of a script execution.", get_color("\x1b[38;5;223m")))
         tools.append(("", ""))
         tools.append(("show_md", "Print all non-default configured metadata.", get_color("\x1b[38;5;218m")))
         tools.append(("add_md", "Add a new metadata to the internal state, which will be applied to all next runs.", get_color("\x1b[38;5;218m")))
@@ -259,7 +270,7 @@ class HTTPMagics(Magics):
             print()
             print("Leaving the waiting prompt without waiting for stop command to finish.")
 
-        ignore_original_handler = not os.environ.get("_SOPHYS_IN_SCRIPT", False)
+        ignore_original_handler = os.environ.get("_SOPHYS_IN_SCRIPT", "False") == "False"
         max_signal_count = 9 if ignore_original_handler else 0
 
         with handle_ctrl_c_signals(
