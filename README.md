@@ -76,6 +76,18 @@ Then, running that whole procedure non-interactively is a matter of calling:
 sophys-cli <extension> -c "%run /home/cool_user/my_routine.ipy"
 ```
 
+### Running scripts
+
+In IPython, you can use the [`%run`](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run) magic to run commands from a file, which allows for some flexibility in user code organization. However, when using it, especially when using it configured with `wait_for_idle`, it becomes hard to stop execution of the whole file. To aid that, there's some code inside `wait_for_idle` to properly stop everything when pressing Ctrl+C. For that to work, you need to wrap the code inside the file in `%begin` / `%end` magics, like so:
+
+```python
+%begin
+
+<rest of the code goes here>
+
+%end
+```
+
 ## Development
 
 ### Creating your own extension
