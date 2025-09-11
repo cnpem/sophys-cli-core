@@ -67,6 +67,44 @@ class KBLMagics(Magics):
 
 
 @magics_class
+class SophysLiveViewMagics(Magics):
+    # Class property
+    extra_arguments = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._logger = logging.getLogger("sophys_cli.tools")
+
+    @line_magic
+    @needs_local_scope
+    def view(self, line, local_ns):
+        """Run kafka-bluesky-live in a subprocess."""
+        if len(line) > 0:
+            command_line = ["sophys_live_view", *line.split(" ")]
+        else:
+            default_bss = get_from_namespace(NamespaceKeys.KAFKA_BOOTSTRAP)
+            default_tn = get_from_namespace(NamespaceKeys.KAFKA_TOPIC)
+            command_line = ["sophys_live_view", "-t", default_tn, "-b", " ".join(default_bss), *SophysLiveViewMagics.extra_arguments]
+
+        kwargs = {"start_new_session": True}
+
+        if in_debug_mode(local_ns):
+            proc = subprocess.Popen(command_line, **kwargs)
+        else:
+            proc = subprocess.Popen(command_line, **kwargs,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        self._logger.info(f"Running {command_line} in a new process... (PID={proc.pid})")
+
+    @staticmethod
+    def description():
+        tools = []
+        tools.append(("view", "Open sophys-live-view", get_color("\x1b[38;5;82m")))
+        return tools
+
+
+@magics_class
 class MiscMagics(Magics):
     @line_magic
     @needs_local_scope
