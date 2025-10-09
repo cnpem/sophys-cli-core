@@ -2,6 +2,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter, SUPPRESS
 from enum import IntEnum
 from typing import Annotated
 
+import functools
 import importlib
 import inspect
 
@@ -15,6 +16,8 @@ from . import in_debug_mode, pretty_print_exception, NamespaceKeys, get_from_nam
 
 
 remote_control_available = importlib.util.find_spec("bluesky_queueserver_api") is not None
+if remote_control_available:
+    from bluesky_queueserver_api.item import BPlan
 
 
 class ModeOfOperation(IntEnum):
@@ -264,7 +267,17 @@ If none of the mentioned worked, it is probably a bug. In this case, please cont
         In local mode, it returns a generator of the plan. In remote mode,
         it returns a `BPlan` instance with the proper arguments.
         """
-        pass
+        args, kwargs = self._create_plan_arguments(parsed_namespace, local_ns)
+
+        if self._mode_of_operation == ModeOfOperation.Local:
+            return functools.partial(self._plan, *args, **kwargs)
+        if self._mode_of_operation == ModeOfOperation.Remote:
+            return BPlan(self._plan_name, *args, **kwargs)
+        if self._mode_of_operation == ModeOfOperation.Test:
+            return (self._plan, args, kwargs)
+
+    def _create_plan_arguments(self, parsed_namespace, local_ns) -> tuple[tuple, dict]:
+        raise NotImplementedError
 
     def _description(self):
         """Description of the plan on the CLI help page."""
