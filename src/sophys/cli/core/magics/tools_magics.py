@@ -316,7 +316,7 @@ class HTTPMagics(Magics):
             max_signal_count=max_signal_count,
             ignore_original_handler=ignore_original_handler
         ):
-            manager.wait_for_idle()
+            manager.wait_for_idle(timeout=60*60*168)  # timeout = 7 days
 
         if not tried_to_stop:
             history_items = self.get_history(manager, logger=self._logger)
