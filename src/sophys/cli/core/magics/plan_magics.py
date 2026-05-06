@@ -326,7 +326,7 @@ class PlanInformation(BaseModel):
     plan_class: object
     extra_props: dict = {}
 
-    def __init__(self, plan_name: str, user_name: str, plan_class: PlanCLI, **kwargs):
+    def __init__(self, plan_name: str, user_name: str, plan_class: type[PlanCLI], **kwargs):
         super().__init__(plan_name=plan_name, user_name=user_name, plan_class=plan_class, extra_props=kwargs)
 
     def apply_to_plan(self, plan_obj: PlanCLI):

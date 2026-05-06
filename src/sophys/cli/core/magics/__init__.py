@@ -32,7 +32,7 @@ class NamespaceKeys(enum.StrEnum):
     TEST_DATA = "__test_data"
 
 
-def add_to_namespace(key: NamespaceKeys, value, ipython=None, _globals=None):
+def add_to_namespace(key: NamespaceKeys | str, value, ipython=None, _globals=None):
     if _globals is not None:
         _globals.update({key: value})
         return
@@ -43,7 +43,7 @@ def add_to_namespace(key: NamespaceKeys, value, ipython=None, _globals=None):
     ipython.push({key: value})
 
 
-def get_from_namespace(key: NamespaceKeys, default=None, ipython=None, ns=None):
+def get_from_namespace(key: NamespaceKeys | str, default=None, ipython=None, ns=None):
     if ipython is None and ns is None:
         ipython = IPython.get_ipython()
     if ns is None:
@@ -156,10 +156,10 @@ def setup_remote_session_handler(ipython, address: str, *, disable_authenticatio
 def setup_plan_magics(
         ipython,
         sophys_name: str,
-        plan_whitelist: dict,
+        plan_whitelist: list,
         mode_of_operation,
         post_submission_callbacks: list[callable] | None = None,
-        exception_handlers: dict[type(Exception), callable] | None = None,
+        exception_handlers: dict[type[Exception], callable] | None = None,
         ):
     """
     Configure plan magics for the application.
