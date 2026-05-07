@@ -454,8 +454,9 @@ class HTTPMagics(Magics):
                 print(f"  Plan name: {running_item['name']}")
                 print( "  Arguments:")  # noqa: E201
 
-                args = ", ".join(str(i) for i in running_item["args"])
-                print(f"   args: {args}")
+                if "args" in running_item:
+                    args = ", ".join(str(i) for i in running_item["args"])
+                    print(f"   args: {args}")
 
                 if "kwargs" in running_item:
                     kwargs = ", ".join("'{}' = {}".format(*i) for i in running_item["kwargs"].items())
