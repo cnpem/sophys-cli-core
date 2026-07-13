@@ -1,3 +1,4 @@
+from collections import defaultdict
 import enum
 import logging
 import typing
@@ -35,23 +36,18 @@ class LocalInMemoryDataSource(DataSource):
     def __init__(self):
         super().__init__()
 
-        self._data_source: dict[str, set] = dict()
+        self._data_source: dict[str, set] = defaultdict(set)
 
     def get(self, type: DataSource.DataType) -> np.array:
         return np.array(list(self._data_source.get(type, [])))
 
     def add(self, type: DataSource.DataType, *values: typing.Iterable[str]):
-        if type not in self._data_source:
-            self._data_source[type] = {*values}
-            return
-
         self._data_source[type].update({*values})
+        self._logger.debug("Added values '%s' to memory db (key: %s)", ", ".join(str(v) for v in values), str(type))
 
     def remove(self, type: DataSource.DataType, *values: typing.Iterable[str]):
-        if type not in self._data_source:
-            return
-
         self._data_source[type].difference_update({*values})
+        self._logger.debug("Removed values '%s' from memory db (key: %s)", ", ".join(str(v) for v in values), str(type))
 
 
 class LocalFileDataSource(DataSource):
@@ -111,7 +107,9 @@ class RedisDataSource(DataSource):
     def add(self, type: DataSource.DataType, *values: typing.Iterable[str]):
         redis_key = self._data_type_to_redis_key(type)
         self._redis.sadd(redis_key, *values)
+        self._logger.debug("Added values '%s' to Redis (key: %s)", ", ".join(str(v) for v in values), redis_key)
 
     def remove(self, type: DataSource.DataType, *values: typing.Iterable[str]):
         redis_key = self._data_type_to_redis_key(type)
         self._redis.srem(redis_key, *values)
+        self._logger.debug("Removed values '%s' from Redis (key: %s)", ", ".join(str(v) for v in values), redis_key)

@@ -108,6 +108,7 @@ def create_kernel(
             "sophys_cli": {
                 "level": "INFO" if not debug_mode else "DEBUG",
                 "handlers": ["print"],
+                "propagate": False
             },
         }
     }
